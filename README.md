@@ -28,7 +28,7 @@ A modern e-commerce admin dashboard built with Next.js, SQLite, and shadcn/ui co
 1. **Clone the repository**
 
    ```bash
-   git clone <repository-url>
+   git clone git@github.com:Danor93/ecommerce-cicd-pipeline.git
    cd ecommerce-cicd-pipeline
    ```
 
