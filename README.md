@@ -85,9 +85,9 @@ The database comes pre-loaded with 8 sample products across different categories
 
 1. Navigate to [http://localhost:3000/login](http://localhost:3000/login)
 2. Use any of the credentials above (recommended: `admin@example.com` / `admin123`)
-3. You'll be redirected to the dashboard
+3. You'll be redirected to the admin panel
 
-## 📱 Using the Dashboard
+## 📱 Using the Admin Panel
 
 ### Product Management
 
@@ -102,6 +102,10 @@ The database comes pre-loaded with 8 sample products across different categories
 - **Loading States**: Visual feedback during API operations
 - **Error Handling**: User-friendly error messages
 - **Responsive Design**: Works on desktop and mobile devices
+
+### Dashboard
+
+- `GET /api/dashboard` - Get dashboard statistics
 
 ## 🌐 API Endpoints
 
@@ -119,20 +123,17 @@ The application provides RESTful API endpoints:
 - `PUT /api/products/[id]` - Update product by ID
 - `DELETE /api/products/[id]` - Delete product by ID
 
-### Dashboard
-
-- `GET /api/dashboard` - Get dashboard statistics
-
 ## 📁 Project Structure
 
 ```
 src/
 ├── app/
 │   ├── api/           # API routes
-│   ├── dashboard/     # Dashboard page
+│   ├── admin-panel/   # Admin panel page
 │   ├── login/         # Login page
 │   └── ...
-├── components/ui/     # shadcn/ui components
+├── components/        # Reusable components including AppHeader
+│   └── ui/            # shadcn/ui components
 ├── lib/               # Database and utilities
 └── types/             # TypeScript definitions
 ```

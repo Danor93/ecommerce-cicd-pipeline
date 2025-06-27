@@ -2,6 +2,7 @@ export interface User {
   id: number;
   email: string;
   name: string;
+  password?: string;
   role: "admin" | "user";
   createdAt: string;
 }
@@ -35,4 +36,15 @@ export interface ApiResponse<T = any> {
   data?: T;
   message?: string;
   error?: string;
+}
+
+export interface CartItem {
+  id: number;
+  user_id: number;
+  product_id: number;
+  quantity: number;
+}
+
+export interface CartItemWithProduct extends CartItem {
+  product: Product;
 }

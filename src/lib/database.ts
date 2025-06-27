@@ -1,5 +1,11 @@
 import sqlite3 from "sqlite3";
-import { User, Product, DashboardStats } from "@/types";
+import {
+  User,
+  Product,
+  DashboardStats,
+  CartItem,
+  CartItemWithProduct,
+} from "@/types";
 import bcrypt from "bcryptjs";
 
 const DB_PATH = "./ecommerce.db";
@@ -40,6 +46,44 @@ class Database {
             image TEXT,
             created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
             updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+          )
+        `);
+
+        // Create cart items table
+        this.db.run(`
+          CREATE TABLE IF NOT EXISTS cart_items (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            user_id INTEGER NOT NULL,
+            product_id INTEGER NOT NULL,
+            quantity INTEGER NOT NULL,
+            added_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY (user_id) REFERENCES users(id),
+            FOREIGN KEY (product_id) REFERENCES products(id)
+          )
+        `);
+
+        // Create orders table
+        this.db.run(`
+          CREATE TABLE IF NOT EXISTS orders (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            user_id INTEGER NOT NULL,
+            total_amount REAL NOT NULL,
+            status TEXT DEFAULT 'completed',
+            ordered_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY (user_id) REFERENCES users(id)
+          )
+        `);
+
+        // Create order items table
+        this.db.run(`
+          CREATE TABLE IF NOT EXISTS order_items (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            order_id INTEGER NOT NULL,
+            product_id INTEGER NOT NULL,
+            quantity INTEGER NOT NULL,
+            price REAL NOT NULL,
+            FOREIGN KEY (order_id) REFERENCES orders(id),
+            FOREIGN KEY (product_id) REFERENCES products(id)
           )
         `);
 
@@ -394,6 +438,156 @@ class Database {
 
         resolve(this.changes > 0);
       });
+    });
+  }
+
+  async getUniqueProductCategories(): Promise<string[]> {
+    await this.initialized;
+    return new Promise((resolve, reject) => {
+      this.db.all(
+        "SELECT DISTINCT category FROM products ORDER BY category",
+        [],
+        (err, rows: any[]) => {
+          if (err) {
+            reject(err);
+            return;
+          }
+          const categories = rows.map((row) => row.category);
+          resolve(categories);
+        }
+      );
+    });
+  }
+
+  // Cart methods
+  async getCartItems(userId: number): Promise<CartItemWithProduct[]> {
+    await this.initialized;
+    return new Promise((resolve, reject) => {
+      this.db.all(
+        `SELECT
+          ci.id, ci.user_id, ci.product_id, ci.quantity,
+          p.name, p.description, p.price, p.stock, p.category, p.image
+         FROM cart_items ci
+         JOIN products p ON ci.product_id = p.id
+         WHERE ci.user_id = ?`,
+        [userId],
+        (err, rows: any[]) => {
+          if (err) return reject(err);
+          const cartItems = rows.map((row) => ({
+            id: row.id,
+            user_id: row.user_id,
+            product_id: row.product_id,
+            quantity: row.quantity,
+            product: {
+              id: row.product_id,
+              name: row.name,
+              description: row.description,
+              price: row.price,
+              stock: row.stock,
+              category: row.category,
+              image: row.image,
+              createdAt: "", // Not essential for cart view
+              updatedAt: "", // Not essential for cart view
+            },
+          }));
+          resolve(cartItems);
+        }
+      );
+    });
+  }
+
+  async addToCart(data: {
+    userId: number;
+    productId: number;
+    quantity: number;
+  }): Promise<CartItem> {
+    await this.initialized;
+    return new Promise((resolve, reject) => {
+      // Check if item already in cart
+      this.db.get(
+        "SELECT * FROM cart_items WHERE user_id = ? AND product_id = ?",
+        [data.userId, data.productId],
+        (err, row: CartItem) => {
+          if (err) return reject(err);
+          if (row) {
+            // Update quantity
+            const newQuantity = row.quantity + data.quantity;
+            this.db.run(
+              "UPDATE cart_items SET quantity = ? WHERE id = ?",
+              [newQuantity, row.id],
+              (err) => {
+                if (err) return reject(err);
+                resolve({ ...row, quantity: newQuantity });
+              }
+            );
+          } else {
+            // Insert new item
+            this.db.run(
+              "INSERT INTO cart_items (user_id, product_id, quantity) VALUES (?, ?, ?)",
+              [data.userId, data.productId, data.quantity],
+              function (err) {
+                if (err) return reject(err);
+                resolve({
+                  id: this.lastID,
+                  user_id: data.userId,
+                  product_id: data.productId,
+                  quantity: data.quantity,
+                });
+              }
+            );
+          }
+        }
+      );
+    });
+  }
+
+  async updateCartItemQuantity(
+    cartItemId: number,
+    quantity: number
+  ): Promise<void> {
+    await this.initialized;
+    return new Promise((resolve, reject) => {
+      if (quantity > 0) {
+        this.db.run(
+          "UPDATE cart_items SET quantity = ? WHERE id = ?",
+          [quantity, cartItemId],
+          (err) => {
+            if (err) return reject(err);
+            resolve();
+          }
+        );
+      } else {
+        // Remove item if quantity is 0 or less
+        this.removeCartItem(cartItemId).then(resolve).catch(reject);
+      }
+    });
+  }
+
+  async removeCartItem(cartItemId: number): Promise<void> {
+    await this.initialized;
+    return new Promise((resolve, reject) => {
+      this.db.run(
+        "DELETE FROM cart_items WHERE id = ?",
+        [cartItemId],
+        (err) => {
+          if (err) return reject(err);
+          resolve();
+        }
+      );
+    });
+  }
+
+  async clearCart(userId: number): Promise<void> {
+    await this.initialized;
+    return new Promise((resolve, reject) => {
+      this.db.run(
+        "DELETE FROM cart_items WHERE user_id = ?",
+        [userId],
+        (err) => {
+          if (err) return reject(err);
+          resolve();
+        }
+      );
     });
   }
 

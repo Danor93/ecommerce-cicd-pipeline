@@ -13,11 +13,12 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Alert } from "@/components/ui/alert";
-import { Loader2, ShoppingBag } from "lucide-react";
+import { Loader2, ShoppingBag, Eye, EyeOff } from "lucide-react";
 
 export default function LoginPage() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState("");
   const router = useRouter();
@@ -39,15 +40,18 @@ export default function LoginPage() {
       const data = await response.json();
 
       if (data.success) {
-        // Store user data in localStorage (in real app, use proper auth)
         localStorage.setItem("user", JSON.stringify(data.data.user));
         localStorage.setItem("token", data.data.token);
-        router.push("/dashboard");
+        if (data.data.user.role === "admin") {
+          router.push("/admin-panel");
+        } else {
+          router.push("/store");
+        }
       } else {
         setError(data.error || "Login failed");
       }
-    } catch (error) {
-      setError("Network error. Please try again.");
+    } catch (err) {
+      setError("An unexpected error occurred. Please try again.");
     } finally {
       setIsLoading(false);
     }
@@ -55,7 +59,7 @@ export default function LoginPage() {
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 to-indigo-100 dark:from-gray-900 dark:to-gray-800 p-4">
-      <Card className="w-full max-w-md">
+      <Card className="w-full max-w-md animate-in fade-in-0 zoom-in-95 duration-500">
         <CardHeader className="space-y-1 text-center">
           <div className="flex justify-center mb-4">
             <div className="rounded-full bg-blue-100 dark:bg-blue-900 p-3">
@@ -81,22 +85,49 @@ export default function LoginPage() {
                 onChange={(e) => setEmail(e.target.value)}
                 required
                 disabled={isLoading}
+                className="transition-shadow duration-300 focus:ring-2 focus:ring-blue-400"
               />
             </div>
-            <div className="space-y-2">
+            <div className="space-y-2 relative">
               <Label htmlFor="password">Password</Label>
               <Input
                 id="password"
-                type="password"
+                type={showPassword ? "text" : "password"}
                 placeholder="Enter your password"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 required
                 disabled={isLoading}
+                className="pr-10 transition-shadow duration-300 focus:ring-2 focus:ring-blue-400"
               />
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon"
+                className="absolute top-6 right-0 h-9 w-10"
+                onClick={() => setShowPassword(!showPassword)}
+                disabled={isLoading}
+              >
+                {showPassword ? (
+                  <EyeOff className="h-4 w-4" />
+                ) : (
+                  <Eye className="h-4 w-4" />
+                )}
+              </Button>
             </div>
-            {error && <Alert variant="destructive">{error}</Alert>}
-            <Button type="submit" className="w-full" disabled={isLoading}>
+            {error && (
+              <Alert
+                variant="destructive"
+                className="animate-in fade-in-0 zoom-in-95 duration-500"
+              >
+                {error}
+              </Alert>
+            )}
+            <Button
+              type="submit"
+              className="w-full transition-transform duration-200 hover:scale-[1.02] active:scale-100"
+              disabled={isLoading}
+            >
               {isLoading ? (
                 <>
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />
@@ -107,19 +138,6 @@ export default function LoginPage() {
               )}
             </Button>
           </form>
-          <div className="mt-4 text-center text-sm text-muted-foreground">
-            <p>Demo credentials:</p>
-            <p>
-              <strong>Admin:</strong> admin@example.com | admin123
-            </p>
-            <p>
-              <strong>Manager:</strong> manager@example.com | manager123
-            </p>
-            <p>
-              <strong>Users:</strong> john@example.com | john123
-            </p>
-            <p>jane@example.com | jane123</p>
-          </div>
         </CardContent>
       </Card>
     </div>
