@@ -30,7 +30,10 @@
     "recharts": "^3.0.2",
     "sqlite3": "^5.1.7",
     "tailwind-merge": "^3.3.1",
-    "zod": "^3.25.67"
+    "zod": "^3.25.67",
+    "react-hot-toast": "^2.4.1",
+    "tailwindcss-animate": "^1.0.7",
+    "pg": "^8.11.3"
   },
   "devDependencies": {
     "@eslint/eslintrc": "^3",
@@ -39,6 +42,7 @@
     "@types/node": "^20",
     "@types/react": "^19",
     "@types/react-dom": "^19",
+    "@types/pg": "^8.10.9",
     "eslint": "^9",
     "eslint-config-next": "15.3.4",
     "tailwindcss": "^4",
