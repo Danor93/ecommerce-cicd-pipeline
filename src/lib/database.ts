@@ -10,6 +10,49 @@ import bcrypt from "bcryptjs";
 
 const DB_PATH = "./ecommerce.db";
 
+interface CountResult {
+  count: number;
+}
+
+interface UserFromDb {
+  id: number;
+  email: string;
+  name: string;
+  password?: string;
+  role: "admin" | "user";
+  created_at: string;
+}
+
+interface ProductFromDb {
+  id: number;
+  name: string;
+  description: string;
+  price: number;
+  stock: number;
+  category: string;
+  image?: string;
+  created_at: string;
+  updated_at: string;
+}
+
+interface CategoryFromDb {
+  category: string;
+}
+
+interface CartItemFromDb extends CartItem {
+  productName: string;
+  productDescription: string;
+  productPrice: number;
+  productImage: string;
+}
+
+interface DashboardStatRow {
+  totalProducts?: number;
+  totalRevenue?: number;
+  totalOrders?: number;
+  lowStockItems?: number;
+}
+
 class Database {
   private db: sqlite3.Database;
   private initialized: Promise<void>;
@@ -90,7 +133,7 @@ class Database {
         // Check if users exist, if not, seed initial data
         this.db.get(
           "SELECT COUNT(*) as count FROM users",
-          async (err, row: any) => {
+          async (err, row: CountResult) => {
             if (err) {
               reject(err);
               return;
@@ -235,7 +278,7 @@ class Database {
       this.db.get(
         "SELECT * FROM users WHERE email = ?",
         [email],
-        (err, row: any) => {
+        (err, row: UserFromDb) => {
           if (err) {
             reject(err);
             return;
@@ -264,19 +307,19 @@ class Database {
       this.db.get(
         "SELECT * FROM users WHERE email = ?",
         [email],
-        async (err, row: any) => {
+        async (err, row: UserFromDb) => {
           if (err) {
             reject(err);
             return;
           }
 
-          if (!row) {
+          if (!row || !row.password) {
             resolve(null);
             return;
           }
 
-          const isValid = await bcrypt.compare(password, row.password);
-          if (!isValid) {
+          const isPasswordValid = await bcrypt.compare(password, row.password);
+          if (!isPasswordValid) {
             resolve(null);
             return;
           }
@@ -297,39 +340,36 @@ class Database {
   async getAllProducts(): Promise<Product[]> {
     await this.initialized;
     return new Promise((resolve, reject) => {
-      this.db.all(
-        "SELECT * FROM products ORDER BY created_at DESC",
-        [],
-        (err, rows: any[]) => {
-          if (err) {
-            reject(err);
-            return;
-          }
-
-          const products = rows.map((row) => ({
-            id: row.id,
-            name: row.name,
-            description: row.description,
-            price: row.price,
-            stock: row.stock,
-            category: row.category,
-            image: row.image,
-            createdAt: row.created_at,
-            updatedAt: row.updated_at,
-          }));
-
-          resolve(products);
+      this.db.all("SELECT * FROM products", (err, rows: ProductFromDb[]) => {
+        if (err) {
+          reject(err);
+          return;
         }
-      );
+
+        const products = rows.map((row) => ({
+          id: row.id,
+          name: row.name,
+          description: row.description,
+          price: row.price,
+          stock: row.stock,
+          category: row.category,
+          image: row.image,
+          createdAt: row.created_at,
+          updatedAt: row.updated_at,
+        }));
+
+        resolve(products);
+      });
     });
   }
 
   async getProductById(id: number): Promise<Product | null> {
+    await this.initialized;
     return new Promise((resolve, reject) => {
       this.db.get(
         "SELECT * FROM products WHERE id = ?",
         [id],
-        (err, row: any) => {
+        (err, row: ProductFromDb) => {
           if (err) {
             reject(err);
             return;
@@ -445,9 +485,8 @@ class Database {
     await this.initialized;
     return new Promise((resolve, reject) => {
       this.db.all(
-        "SELECT DISTINCT category FROM products ORDER BY category",
-        [],
-        (err, rows: any[]) => {
+        "SELECT DISTINCT category FROM products",
+        (err, rows: CategoryFromDb[]) => {
           if (err) {
             reject(err);
             return;
@@ -463,36 +502,41 @@ class Database {
   async getCartItems(userId: number): Promise<CartItemWithProduct[]> {
     await this.initialized;
     return new Promise((resolve, reject) => {
-      this.db.all(
-        `SELECT
-          ci.id, ci.user_id, ci.product_id, ci.quantity,
-          p.name, p.description, p.price, p.stock, p.category, p.image
-         FROM cart_items ci
-         JOIN products p ON ci.product_id = p.id
-         WHERE ci.user_id = ?`,
-        [userId],
-        (err, rows: any[]) => {
-          if (err) return reject(err);
-          const cartItems = rows.map((row) => ({
-            id: row.id,
-            user_id: row.user_id,
-            product_id: row.product_id,
-            quantity: row.quantity,
-            product: {
-              id: row.product_id,
-              name: row.name,
-              description: row.description,
-              price: row.price,
-              stock: row.stock,
-              category: row.category,
-              image: row.image,
-              createdAt: "", // Not essential for cart view
-              updatedAt: "", // Not essential for cart view
-            },
-          }));
-          resolve(cartItems);
+      const query = `
+        SELECT 
+          ci.*,
+          p.name as productName,
+          p.description as productDescription,
+          p.price as productPrice,
+          p.image as productImage
+        FROM cart_items ci
+        JOIN products p ON ci.product_id = p.id
+        WHERE ci.user_id = ?
+      `;
+      this.db.all(query, [userId], (err, rows: CartItemFromDb[]) => {
+        if (err) {
+          reject(err);
+          return;
         }
-      );
+        const cartItems: CartItemWithProduct[] = rows.map((row) => ({
+          id: row.id,
+          user_id: row.user_id,
+          product_id: row.product_id,
+          quantity: row.quantity,
+          product: {
+            id: row.product_id,
+            name: row.productName,
+            description: row.productDescription,
+            price: row.productPrice,
+            stock: 0, // Not fetched in this query, decide if needed
+            category: "", // Not fetched in this query
+            image: row.productImage,
+            createdAt: "", // Not fetched
+            updatedAt: "", // Not fetched
+          },
+        }));
+        resolve(cartItems);
+      });
     });
   }
 
@@ -594,45 +638,58 @@ class Database {
   // Dashboard stats
   async getDashboardStats(): Promise<DashboardStats> {
     await this.initialized;
-    return new Promise((resolve, reject) => {
-      const stats: Partial<DashboardStats> = {};
+    const stats: DashboardStats = {
+      totalProducts: 0,
+      totalRevenue: 0,
+      totalOrders: 0,
+      lowStockItems: 0,
+    };
 
-      // Get total products
-      this.db.get("SELECT COUNT(*) as count FROM products", (err, row: any) => {
-        if (err) {
-          reject(err);
-          return;
-        }
-        stats.totalProducts = row.count;
-
-        // Get low stock items
+    const promises = [
+      new Promise<void>((resolve, reject) => {
         this.db.get(
-          "SELECT COUNT(*) as count FROM products WHERE stock < 10",
-          (err, row: any) => {
-            if (err) {
-              reject(err);
-              return;
-            }
-            stats.lowStockItems = row.count;
-
-            // Calculate total revenue (mock calculation based on sold items)
-            this.db.get(
-              "SELECT SUM(price * (50 - stock)) as revenue FROM products",
-              (err, row: any) => {
-                if (err) {
-                  reject(err);
-                  return;
-                }
-                stats.totalRevenue = row.revenue || 0;
-                stats.totalOrders = 156; // Mock value
-
-                resolve(stats as DashboardStats);
-              }
-            );
+          "SELECT COUNT(*) as totalProducts FROM products",
+          (err, row: DashboardStatRow) => {
+            if (err) return reject(err);
+            stats.totalProducts = row.totalProducts || 0;
+            resolve();
           }
         );
-      });
-    });
+      }),
+      new Promise<void>((resolve, reject) => {
+        this.db.get(
+          "SELECT SUM(total_amount) as totalRevenue FROM orders WHERE status = 'completed'",
+          (err, row: DashboardStatRow) => {
+            if (err) return reject(err);
+            stats.totalRevenue = row.totalRevenue || 0;
+            resolve();
+          }
+        );
+      }),
+      new Promise<void>((resolve, reject) => {
+        this.db.get(
+          "SELECT COUNT(*) as totalOrders FROM orders",
+          (err, row: DashboardStatRow) => {
+            if (err) return reject(err);
+            stats.totalOrders = row.totalOrders || 0;
+            resolve();
+          }
+        );
+      }),
+      new Promise<void>((resolve, reject) => {
+        this.db.get(
+          "SELECT COUNT(*) as lowStockItems FROM products WHERE stock < 10",
+          (err, row: DashboardStatRow) => {
+            if (err) return reject(err);
+            stats.lowStockItems = row.lowStockItems || 0;
+            resolve();
+          }
+        );
+      }),
+    ];
+
+    await Promise.all(promises);
+    return stats;
   }
 
   close() {

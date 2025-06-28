@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useRouter, useParams } from "next/navigation";
 import { User, Product } from "@/types";
 import { Button } from "@/components/ui/button";
@@ -24,18 +24,29 @@ export default function ProductDetailPage() {
   const params = useParams();
   const { showToast } = useToast();
 
-  useEffect(() => {
-    const userData = localStorage.getItem("user");
-    if (!userData) {
-      router.push("/login");
-      return;
-    }
-    const parsedUser = JSON.parse(userData);
-    setUser(parsedUser);
-    loadProduct();
-  }, [router, params.id]);
+  const loadRelatedProducts = useCallback(
+    async (category: string) => {
+      try {
+        const response = await fetch("/api/store/products");
+        const data = await response.json();
+        if (data.success) {
+          const filtered = data.data
+            .filter(
+              (p: Product) =>
+                p.category === category &&
+                p.id !== parseInt(params.id as string)
+            )
+            .slice(0, 4);
+          setRelatedProducts(filtered);
+        }
+      } catch (error) {
+        console.error("Failed to load related products:", error);
+      }
+    },
+    [params.id]
+  );
 
-  const loadProduct = async () => {
+  const loadProduct = useCallback(async () => {
     try {
       setIsLoading(true);
       const response = await fetch(`/api/products/${params.id}`);
@@ -55,25 +66,18 @@ export default function ProductDetailPage() {
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [params.id, router, showToast, loadRelatedProducts]);
 
-  const loadRelatedProducts = async (category: string) => {
-    try {
-      const response = await fetch("/api/store/products");
-      const data = await response.json();
-      if (data.success) {
-        const filtered = data.data
-          .filter(
-            (p: Product) =>
-              p.category === category && p.id !== parseInt(params.id as string)
-          )
-          .slice(0, 4);
-        setRelatedProducts(filtered);
-      }
-    } catch (error) {
-      console.error("Failed to load related products:", error);
+  useEffect(() => {
+    const userData = localStorage.getItem("user");
+    if (!userData) {
+      router.push("/login");
+      return;
     }
-  };
+    const parsedUser = JSON.parse(userData);
+    setUser(parsedUser);
+    loadProduct();
+  }, [loadProduct, router]);
 
   const handleAddToCart = async () => {
     if (!user || !product) return;
