@@ -12,8 +12,9 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { Alert } from "@/components/ui/alert";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Loader2, ShoppingBag, Eye, EyeOff } from "lucide-react";
+import { useToast } from "@/lib/toast";
 
 export default function LoginPage() {
   const [email, setEmail] = useState("");
@@ -22,6 +23,7 @@ export default function LoginPage() {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState("");
   const router = useRouter();
+  const { showToast } = useToast();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -42,6 +44,7 @@ export default function LoginPage() {
       if (data.success) {
         localStorage.setItem("user", JSON.stringify(data.data.user));
         localStorage.setItem("token", data.data.token);
+        showToast("Login successful! Redirecting...", "success");
         if (data.data.user.role === "admin") {
           router.push("/admin-panel");
         } else {
@@ -120,7 +123,9 @@ export default function LoginPage() {
                 variant="destructive"
                 className="animate-in fade-in-0 zoom-in-95 duration-500"
               >
-                {error}
+                <AlertDescription className="text-sm break-words">
+                  {error}
+                </AlertDescription>
               </Alert>
             )}
             <Button
@@ -138,6 +143,19 @@ export default function LoginPage() {
               )}
             </Button>
           </form>
+
+          <div className="mt-6 text-center">
+            <p className="text-sm text-gray-600">
+              Don&apos;t have an account?{" "}
+              <Button
+                variant="link"
+                className="p-0 h-auto text-blue-600 hover:text-blue-800"
+                onClick={() => router.push("/signup")}
+              >
+                Sign up here
+              </Button>
+            </p>
+          </div>
         </CardContent>
       </Card>
     </div>

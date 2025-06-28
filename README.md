@@ -4,12 +4,14 @@ A modern e-commerce admin dashboard built with Next.js, SQLite, and shadcn/ui co
 
 ## 🚀 Features
 
-- **User Authentication** - Login system with role-based access
+- **User Authentication** - Secure login and signup system with role-based access
 - **Product Management** - Full CRUD operations (Create, Read, Update, Delete)
+- **E-commerce Storefront** - A customer-facing store to browse and purchase products
+- **Shopping Cart** - Fully functional cart for users to add items to
 - **Dashboard Analytics** - Real-time stats and inventory tracking
 - **Responsive Design** - Modern UI built with shadcn/ui components
 - **SQLite Database** - Lightweight, embedded database with auto-initialization
-- **Form Validation** - Comprehensive client-side and server-side validation
+- **Robust Form Validation** - Comprehensive client-side validation with password strength policies
 
 ## 🛠️ Tech Stack
 
@@ -65,7 +67,7 @@ A modern e-commerce admin dashboard built with Next.js, SQLite, and shadcn/ui co
 **No manual setup required!** The database will automatically:
 
 - Create an SQLite database file (`ecommerce.db`) in the project root
-- Create the necessary tables (`users` and `products`)
+- Create the necessary tables (`users`, `products`, `cart`)
 - Seed initial data on first run
 
 ### Initial Users (Auto-seeded)
@@ -114,27 +116,45 @@ The application provides RESTful API endpoints:
 ### Authentication
 
 - `POST /api/auth/login` - User login
+- `POST /api/auth/signup` - User signup
 
-### Products
+### Products (Admin)
 
 - `GET /api/products` - Get all products
 - `POST /api/products` - Create new product
 - `GET /api/products/[id]` - Get product by ID
 - `PUT /api/products/[id]` - Update product by ID
 - `DELETE /api/products/[id]` - Delete product by ID
+- `GET /api/products/categories` - Get all unique product categories
+
+### Store & Cart (Client)
+
+- `GET /api/store/products` - Get all products for the storefront
+- `GET /api/store/categories` - Get all categories for the storefront
+- `GET /api/cart` - Get user's shopping cart
+- `POST /api/cart` - Add item to cart
+
+### Dashboard
+
+- `GET /api/dashboard` - Get dashboard statistics
+- `GET /api/health` - Health check endpoint
 
 ## 📁 Project Structure
 
 ```
 src/
 ├── app/
-│   ├── api/           # API routes
-│   ├── admin-panel/   # Admin panel page
+│   ├── api/           # API routes (auth, products, store, etc.)
+│   ├── admin-panel/   # Admin dashboard page
+│   ├── cart/          # Shopping cart page
 │   ├── login/         # Login page
+│   ├── signup/        # Signup page
+│   ├── store/         # Customer-facing store page
 │   └── ...
-├── components/        # Reusable components including AppHeader
+├── components/        # Reusable components
 │   └── ui/            # shadcn/ui components
-├── lib/               # Database and utilities
+├── hooks/             # Custom React hooks (e.g., useMounted)
+├── lib/               # Core libraries (database, utils, toast)
 └── types/             # TypeScript definitions
 ```
 
@@ -142,10 +162,11 @@ src/
 
 ### File Structure
 
-- **Database**: `src/lib/database.ts` - SQLite database setup and operations
+- **Database**: `src/lib/database.ts` & `src/lib/db.ts` - SQLite setup
 - **Types**: `src/types/index.ts` - TypeScript interfaces
 - **API Routes**: `src/app/api/` - Next.js API routes
-- **Components**: `src/components/ui/` - Reusable UI components
+- **Components**: `src/components/` - Reusable UI components
+- **Hooks**: `src/hooks/` - Custom hooks for client-side logic
 
 ### Adding New Features
 

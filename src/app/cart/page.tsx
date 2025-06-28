@@ -6,12 +6,14 @@ import { User, CartItemWithProduct } from "@/types";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Trash2, ShoppingCart } from "lucide-react";
+import { useToast } from "@/lib/toast";
 
 export default function CartPage() {
   const [user, setUser] = useState<User | null>(null);
   const [cartItems, setCartItems] = useState<CartItemWithProduct[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const router = useRouter();
+  const { showToast } = useToast();
 
   useEffect(() => {
     const userData = localStorage.getItem("user");
@@ -53,8 +55,10 @@ export default function CartPage() {
         body: JSON.stringify({ cartItemId, quantity }),
       });
       loadCartItems(user!.id); // Refresh cart
+      showToast("Quantity updated successfully", "success");
     } catch (error) {
       console.error("Failed to update quantity:", error);
+      showToast("Failed to update quantity", "destructive");
     }
   };
 
@@ -69,8 +73,10 @@ export default function CartPage() {
         body: JSON.stringify({ cartItemId }),
       });
       loadCartItems(user!.id); // Refresh cart
+      showToast("Item removed from cart", "success");
     } catch (error) {
       console.error("Failed to remove item:", error);
+      showToast("Failed to remove item", "destructive");
     }
   };
 
@@ -115,7 +121,7 @@ export default function CartPage() {
               Your cart is empty
             </h2>
             <p className="mt-1 text-sm text-gray-500">
-              Looks like you haven't added anything to your cart yet.
+              Looks like you haven&apos;t added anything to your cart yet.
             </p>
           </div>
         ) : (
