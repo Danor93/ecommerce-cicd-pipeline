@@ -17,15 +17,19 @@ A modern e-commerce admin dashboard built with Next.js, SQLite, and shadcn/ui co
 
 - **Frontend**: Next.js 15, React, TypeScript, Tailwind CSS
 - **UI Components**: shadcn/ui
-- **Database**: SQLite with sqlite3
+- **Database**: PostgreSQL (with Docker) or SQLite (for local development)
 - **Authentication**: bcryptjs for password hashing
+- **Containerization**: Docker, Docker Compose
 
 ## 📋 Prerequisites
 
 - Node.js 18.x or higher
 - npm, yarn, pnpm, or bun package manager
+- Docker and Docker Compose
 
 ## 🚀 Getting Started
+
+### Standard Local Development
 
 1. **Clone the repository**
 
@@ -40,10 +44,6 @@ A modern e-commerce admin dashboard built with Next.js, SQLite, and shadcn/ui co
    npm install
    # or
    yarn install
-   # or
-   pnpm install
-   # or
-   bun install
    ```
 
 3. **Run the development server**
@@ -52,10 +52,41 @@ A modern e-commerce admin dashboard built with Next.js, SQLite, and shadcn/ui co
    npm run dev
    # or
    yarn dev
-   # or
-   pnpm dev
-   # or
-   bun dev
+   ```
+
+4. **Open the application**
+
+   Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+
+### Docker-Based Development
+
+This is the recommended approach for a consistent development environment that mirrors production.
+
+1. **Clone the repository**
+
+   ```bash
+   git clone git@github.com:Danor93/ecommerce-cicd-pipeline.git
+   cd ecommerce-cicd-pipeline
+   ```
+
+2. **Create an environment file**
+
+   Create a `.env` file in the project root and add the following variables:
+
+   ```env
+   # Application Port
+   APP_PORT=3000
+
+   # PostgreSQL Database
+   POSTGRES_USER=myuser
+   POSTGRES_PASSWORD=mypassword
+   POSTGRES_DB=mydatabase
+   ```
+
+3. **Run with Docker Compose**
+
+   ```bash
+   docker-compose up --build
    ```
 
 4. **Open the application**
@@ -64,7 +95,17 @@ A modern e-commerce admin dashboard built with Next.js, SQLite, and shadcn/ui co
 
 ## 🗄️ Database Setup
 
-**No manual setup required!** The database will automatically:
+### Docker (PostgreSQL)
+
+**No manual setup required!** When using Docker Compose, the database will automatically:
+
+- Create a PostgreSQL container
+- Create the necessary tables from the `init.sql` script
+- Seed initial data on the application's first run
+
+### Local (SQLite)
+
+If you are not using Docker, the database will automatically:
 
 - Create an SQLite database file (`ecommerce.db`) in the project root
 - Create the necessary tables (`users`, `products`, `cart`)
@@ -72,12 +113,10 @@ A modern e-commerce admin dashboard built with Next.js, SQLite, and shadcn/ui co
 
 ### Initial Users (Auto-seeded)
 
-| Email               | Password   | Role  |
-| ------------------- | ---------- | ----- |
-| admin@example.com   | admin123   | admin |
-| john@example.com    | john123    | user  |
-| jane@example.com    | jane123    | user  |
-| manager@example.com | manager123 | admin |
+| Email             | Password | Role  |
+| ----------------- | -------- | ----- |
+| admin@example.com | admin123 | admin |
+| john@example.com  | john123  | user  |
 
 ### Initial Products
 

@@ -338,6 +338,9 @@ export default function DashboardPage() {
   const confirmDeleteProduct = async () => {
     if (!selectedProduct) return;
 
+    setIsSubmitting(true);
+    setSubmitError("");
+
     try {
       const response = await fetch(`/api/products/${selectedProduct.id}`, {
         method: "DELETE",
@@ -345,9 +348,12 @@ export default function DashboardPage() {
 
       const data = await response.json();
       if (data.success) {
+        setProducts((prevProducts) =>
+          prevProducts.filter((product) => product.id !== selectedProduct.id)
+        );
         setShowDeleteDialog(false);
         setSelectedProduct(null);
-        loadDashboardData();
+        loadDashboardData(); // To refresh stats
       } else {
         setSubmitError(data.error || "Failed to delete product");
       }
@@ -862,11 +868,16 @@ export default function DashboardPage() {
             <Button
               variant="outline"
               onClick={() => setShowDeleteDialog(false)}
+              disabled={isSubmitting}
             >
               Cancel
             </Button>
-            <Button variant="destructive" onClick={confirmDeleteProduct}>
-              Delete Product
+            <Button
+              variant="destructive"
+              onClick={confirmDeleteProduct}
+              disabled={isSubmitting}
+            >
+              {isSubmitting ? "Deleting..." : "Delete Product"}
             </Button>
           </DialogFooter>
         </DialogContent>

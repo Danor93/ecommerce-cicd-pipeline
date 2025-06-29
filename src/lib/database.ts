@@ -112,18 +112,56 @@ class Database {
 
     const products = [
       {
-        name: "Wireless Headphones",
-        description: "High-quality wireless headphones with noise cancellation",
-        price: 299.99,
-        stock: 25,
-        category: "Electronics",
+        name: "iPhone 15 Pro",
+        description: "The latest iPhone with a powerful A17 Pro chip.",
+        price: 999.99,
+        stock: 40,
+        category: "Smartphones",
       },
       {
-        name: "Smart Watch",
-        description: "Advanced smartwatch with health monitoring",
-        price: 199.99,
+        name: "Samsung Galaxy S24 Ultra",
+        description: "The ultimate Android phone with a built-in S Pen.",
+        price: 1199.99,
+        stock: 35,
+        category: "Smartphones",
+      },
+      {
+        name: "Sony PlayStation 5",
+        description:
+          "Next-generation gaming console with breathtaking performance.",
+        price: 499.99,
+        stock: 25,
+        category: "Gaming",
+      },
+      {
+        name: "LG C3 65-Inch OLED TV",
+        description:
+          "A stunning OLED TV with perfect blacks and vibrant colors.",
+        price: 1599.99,
         stock: 15,
-        category: "Electronics",
+        category: "TV & Home Theater",
+      },
+      {
+        name: "Samsung QN90C 75-Inch Neo QLED TV",
+        description: "A bright and colorful QLED TV with Mini LED technology.",
+        price: 2499.99,
+        stock: 10,
+        category: "TV & Home Theater",
+      },
+      {
+        name: "Bose QuietComfort Ultra Headphones",
+        description: "Industry-leading noise cancellation and immersive audio.",
+        price: 429.0,
+        stock: 50,
+        category: "Audio",
+      },
+      {
+        name: "Dell XPS 15 Laptop",
+        description:
+          "A powerful and elegant laptop for creators and professionals.",
+        price: 2199.0,
+        stock: 22,
+        category: "Computers",
       },
     ];
 
@@ -251,11 +289,16 @@ class Database {
     id: number,
     productData: Partial<Omit<Product, "id" | "createdAt">>
   ): Promise<Product | null> {
-    const { name, description, price, stock, category, image } = productData;
+    const fields = Object.keys(productData)
+      .map((key, index) => `"${key}" = $${index + 2}`)
+      .join(", ");
+    const values = Object.values(productData);
+
     const rows = await this.executeQuery(
-      "UPDATE products SET name = $1, description = $2, price = $3, stock = $4, category = $5, image = $6, updated_at = NOW() WHERE id = $7 RETURNING *",
-      [name, description, price, stock, category, image, id]
+      `UPDATE products SET ${fields}, updated_at = CURRENT_TIMESTAMP WHERE id = $1 RETURNING *`,
+      [id, ...values]
     );
+
     if (rows.length === 0) return null;
     const row = rows[0];
     return {
@@ -272,16 +315,16 @@ class Database {
   }
 
   async deleteProduct(id: number): Promise<boolean> {
-    const result = await this.executeQuery(
-      "DELETE FROM products WHERE id = $1",
+    const rows = await this.executeQuery(
+      "DELETE FROM products WHERE id = $1 RETURNING id",
       [id]
     );
-    return result.length > 0;
+    return rows.length > 0;
   }
 
   async getUniqueProductCategories(): Promise<string[]> {
     const rows = await this.executeQuery(
-      "SELECT DISTINCT category FROM products ORDER BY category"
+      "SELECT DISTINCT category FROM products"
     );
     return rows.map((row: CategoryFromDb) => row.category);
   }
