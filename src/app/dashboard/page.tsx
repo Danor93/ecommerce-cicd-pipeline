@@ -34,14 +34,6 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import {
-  Form,
-  FormControl,
-  FormField,
-  FormItem,
-  FormLabel,
-  FormMessage,
-} from "@/components/ui/form";
-import {
   Select,
   SelectContent,
   SelectItem,
@@ -51,10 +43,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
-import { Separator } from "@/components/ui/separator";
 import {
-  ShoppingBag,
   TrendingUp,
   Package,
   AlertTriangle,
@@ -138,8 +127,8 @@ export default function DashboardPage() {
       if (data.success) {
         setProducts(data.data);
       }
-    } catch (error) {
-      console.error("Failed to load dashboard data:", error);
+    } catch (_error) {
+      console.error("Failed to load dashboard data:", _error);
     } finally {
       setIsLoading(false);
     }
@@ -288,15 +277,14 @@ export default function DashboardPage() {
       if (data.success) {
         setShowAddDialog(false);
         resetForm();
-        loadDashboardData(); // Refresh the data
-        loadCategories(); // Refresh categories
+        loadDashboardData();
+        loadCategories();
       } else {
         setSubmitError(data.error || "Failed to create product");
       }
-    } catch (error) {
-      setSubmitError(
-        "Network error. Please check your connection and try again."
-      );
+    } catch (_error) {
+      console.error("Failed to add product:", _error);
+      setSubmitError("An unexpected error occurred. Please try again.");
     } finally {
       setIsSubmitting(false);
     }
@@ -334,15 +322,14 @@ export default function DashboardPage() {
         setShowEditDialog(false);
         setSelectedProduct(null);
         resetForm();
-        loadDashboardData(); // Refresh the data
-        loadCategories(); // Refresh categories
+        loadDashboardData();
+        loadCategories();
       } else {
         setSubmitError(data.error || "Failed to update product");
       }
-    } catch (error) {
-      setSubmitError(
-        "Network error. Please check your connection and try again."
-      );
+    } catch (_error) {
+      console.error("Failed to edit product:", _error);
+      setSubmitError("An unexpected error occurred. Please try again.");
     } finally {
       setIsSubmitting(false);
     }
@@ -360,12 +347,15 @@ export default function DashboardPage() {
       if (data.success) {
         setShowDeleteDialog(false);
         setSelectedProduct(null);
-        loadDashboardData(); // Refresh the data
+        loadDashboardData();
       } else {
-        alert(data.error || "Failed to delete product");
+        setSubmitError(data.error || "Failed to delete product");
       }
-    } catch (error) {
-      alert("Failed to delete product");
+    } catch (_error) {
+      console.error("Failed to delete product:", _error);
+      setSubmitError("An unexpected error occurred. Please try again.");
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -861,10 +851,11 @@ export default function DashboardPage() {
       <Dialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
         <DialogContent className="sm:max-w-[425px]">
           <DialogHeader>
-            <DialogTitle>Delete Product</DialogTitle>
+            <DialogTitle>Confirm Deletion</DialogTitle>
             <DialogDescription>
-              Are you sure you want to delete "{selectedProduct?.name}"? This
-              action cannot be undone.
+              This action cannot be undone. This will permanently delete the
+              product &quot;{selectedProduct?.name}&quot; and remove its data
+              from our servers.
             </DialogDescription>
           </DialogHeader>
           <DialogFooter>

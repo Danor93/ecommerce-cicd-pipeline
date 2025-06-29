@@ -1,0 +1,58 @@
+# Docker Compose file for setting up the production environment.
+
+version: "3.8"
+
+services:
+  # The Next.js application service.
+  next-app:
+    # Build the Docker image from the Dockerfile in the current directory.
+    build:
+      context: .
+      dockerfile: Dockerfile
+    # Expose port 3000 from the container and map it to the host port defined by APP_PORT.
+    ports:
+      - "${APP_PORT:-3000}:3000"
+    # Set environment variables for the application.
+    # These are passed to the Next.js app. The database connection details are needed.
+    environment:
+      DATABASE_URL: postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB}?sslmode=disable
+    # This service depends on the 'db' service. It will wait for 'db' to be healthy before starting.
+    depends_on:
+      db:
+        condition: service_healthy
+    # Connect this service to the 'ecommerce-network'.
+    networks:
+      - ecommerce-network
+
+  # The PostgreSQL database service.
+  db:
+    # Use the official PostgreSQL image.
+    image: postgres:15-alpine
+    # Set environment variables for the database from the .env file.
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB}
+    # Mount a volume to persist database data across container restarts.
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+      - ./db:/docker-entrypoint-initdb.d
+    # Health check to ensure the database is ready before other services start.
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    # Connect this service to the 'ecommerce-network'.
+    networks:
+      - ecommerce-network
+
+# Define the network for communication between services.
+networks:
+  ecommerce-network:
+    driver: bridge
+
+# Define the volume for data persistence.
+volumes:
+  postgres-data:
+    driver: local

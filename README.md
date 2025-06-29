@@ -1,87 +1,98 @@
 # E-Commerce Admin Dashboard
 
-A modern e-commerce admin dashboard built with Next.js, SQLite, and shadcn/ui components. This project provides a complete product management system with user authentication and a responsive dashboard interface.
+A modern, containerized e-commerce admin dashboard built with Next.js, PostgreSQL, and Docker. This project provides a complete product management system with user authentication, all running in a consistent and reproducible development environment.
 
 ## 🚀 Features
 
+- **Containerized Environment** - Develop and run the application consistently with Docker and Docker Compose.
 - **User Authentication** - Secure login and signup system with role-based access
 - **Product Management** - Full CRUD operations (Create, Read, Update, Delete)
 - **E-commerce Storefront** - A customer-facing store to browse and purchase products
 - **Shopping Cart** - Fully functional cart for users to add items to
 - **Dashboard Analytics** - Real-time stats and inventory tracking
 - **Responsive Design** - Modern UI built with shadcn/ui components
-- **SQLite Database** - Lightweight, embedded database with auto-initialization
+- **PostgreSQL Database** - Robust, production-ready database with automated initialization.
 - **Robust Form Validation** - Comprehensive client-side validation with password strength policies
 
 ## 🛠️ Tech Stack
 
 - **Frontend**: Next.js 15, React, TypeScript, Tailwind CSS
 - **UI Components**: shadcn/ui
-- **Database**: SQLite with sqlite3
+- **Database**: PostgreSQL
 - **Authentication**: bcryptjs for password hashing
+- **Containerization**: Docker, Docker Compose
 
 ## 📋 Prerequisites
 
-- Node.js 18.x or higher
-- npm, yarn, pnpm, or bun package manager
+- Docker and Docker Compose
+- Node.js 18.x or higher (for local, non-Docker development)
+- npm or yarn package manager
 
 ## 🚀 Getting Started
 
-1. **Clone the repository**
+### Recommended: Docker-Based Development
 
-   ```bash
-   git clone git@github.com:Danor93/ecommerce-cicd-pipeline.git
-   cd ecommerce-cicd-pipeline
-   ```
+This is the primary and recommended approach for a consistent development environment that mirrors production.
 
-2. **Install dependencies**
+1.  **Clone the repository**
 
-   ```bash
-   npm install
-   # or
-   yarn install
-   # or
-   pnpm install
-   # or
-   bun install
-   ```
+    ```bash
+    git clone git@github.com:Danor93/ecommerce-cicd-pipeline.git
+    cd ecommerce-cicd-pipeline
+    ```
 
-3. **Run the development server**
+2.  **Create an environment file**
 
-   ```bash
-   npm run dev
-   # or
-   yarn dev
-   # or
-   pnpm dev
-   # or
-   bun dev
-   ```
+    Create a `.env` file in the project root by copying the example:
 
-4. **Open the application**
+    ```bash
+    cp .env.example .env
+    ```
 
-   Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+    The default values in `.env.example` are suitable for local development.
+
+3.  **Run with Docker Compose**
+
+    ```bash
+    docker-compose up --build
+    ```
+
+4.  **Open the application**
+
+    Open [http://localhost:3000](http://localhost:3000) with your browser to see the result. The application may take a moment to start as the database initializes.
+
+### Legacy: Standard Local Development
+
+> **Note**: This method is not recommended for standard development as it runs outside the containerized environment. The project is now optimized for PostgreSQL and may not work correctly with the legacy SQLite setup without manual changes to the database connection logic.
+
+1.  **Install dependencies**
+
+    ```bash
+    yarn install
+    ```
+
+2.  **Run the development server**
+
+    ```bash
+    yarn dev
+    ```
 
 ## 🗄️ Database Setup
 
-**No manual setup required!** The database will automatically:
+### PostgreSQL (via Docker)
 
-- Create an SQLite database file (`ecommerce.db`) in the project root
-- Create the necessary tables (`users`, `products`, `cart`)
-- Seed initial data on first run
+**No manual setup is required!** The Docker Compose workflow handles everything:
+
+- A PostgreSQL container is created and its data is persisted in a Docker volume.
+- The schema is automatically created on first run from the `db/init.sql` file.
+- The application then automatically seeds the database with initial users and products.
 
 ### Initial Users (Auto-seeded)
 
-| Email               | Password   | Role  |
-| ------------------- | ---------- | ----- |
-| admin@example.com   | admin123   | admin |
-| john@example.com    | john123    | user  |
-| jane@example.com    | jane123    | user  |
-| manager@example.com | manager123 | admin |
-
-### Initial Products
-
-The database comes pre-loaded with 8 sample products across different categories (Electronics, Office, Appliances, Accessories).
+| Email             | Password | Role  |
+| ----------------- | -------- | ----- |
+| admin@example.com | admin123 | admin |
+| john@example.com  | john123  | user  |
 
 ## 🔐 Login
 
@@ -206,5 +217,5 @@ src/
 
 - [Next.js Documentation](https://nextjs.org/docs) - Learn about Next.js features and API
 - [shadcn/ui](https://ui.shadcn.com/) - Learn about the UI component library
-- [SQLite Documentation](https://www.sqlite.org/docs.html) - Learn about SQLite database
+- [PostgreSQL Documentation](https://www.postgresql.org/docs/) - Learn about PostgreSQL database
 - [Tailwind CSS](https://tailwindcss.com/docs) - Learn about utility-first CSS framework

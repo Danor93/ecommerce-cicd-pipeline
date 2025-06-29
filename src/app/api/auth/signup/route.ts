@@ -47,21 +47,8 @@ export async function POST(request: NextRequest) {
     // Hash password
     const hashedPassword = await bcrypt.hash(password, 10);
 
-    // Create user - using database instance properly
-    await new Promise<void>((resolve, reject) => {
-      // @ts-expect-error - accessing private db for user creation
-      db.db.run(
-        "INSERT INTO users (email, name, password, role) VALUES (?, ?, ?, ?)",
-        [email, name, hashedPassword, "user"],
-        function (err) {
-          if (err) {
-            reject(err);
-          } else {
-            resolve();
-          }
-        }
-      );
-    });
+    // Create user
+    await db.createUser({ name, email, role: "user" }, hashedPassword);
 
     return NextResponse.json({
       success: true,
