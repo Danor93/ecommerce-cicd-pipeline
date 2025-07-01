@@ -59,7 +59,15 @@ services:
     volumes:
       - ./jenkins_home:/var/jenkins_home
       - /var/run/docker.sock:/var/run/docker.sock
-      - /usr/local/bin/docker:/usr/local/bin/docker
+    environment:
+      - DOCKER_HOST=unix:///var/run/docker.sock
+    command: >
+      bash -c "
+        apt-get update &&
+        apt-get install -y docker.io &&
+        chmod 666 /var/run/docker.sock &&
+        /usr/local/bin/jenkins.sh
+      "
     networks:
       - default
 
