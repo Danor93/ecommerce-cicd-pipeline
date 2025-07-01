@@ -22,83 +22,33 @@ A modern, containerized e-commerce admin dashboard built with Next.js, PostgreSQ
 - **Authentication**: bcryptjs for password hashing
 - **Containerization**: Docker, Docker Compose
 
-## 📋 Prerequisites
+## 🚀 Quick Start
 
-- Docker and Docker Compose
-- Node.js 18.x or higher (for local, non-Docker development)
-- npm or yarn package manager
+**📖 For complete installation and Jenkins CI/CD pipeline setup instructions, see the [INSTALL.md](./INSTALL.md) guide.**
 
-## 🚀 Getting Started
+The INSTALL.md guide covers:
 
-### Recommended: Docker-Based Development
+- ✅ Prerequisites and system requirements
+- ✅ Docker & application setup
+- ✅ Jenkins CI/CD pipeline configuration
+- ✅ GitHub and Docker Hub credentials setup
+- ✅ Database configuration
+- ✅ Troubleshooting and security considerations
 
-This is the primary and recommended approach for a consistent development environment that mirrors production.
-
-1.  **Clone the repository**
-
-    ```bash
-    git clone git@github.com:Danor93/ecommerce-cicd-pipeline.git
-    cd ecommerce-cicd-pipeline
-    ```
-
-2.  **Create an environment file**
-
-    Create a `.env` file in the project root by copying the example:
+### Quick Launch (TL;DR)
 
     ```bash
-    cp .env.example .env
-    ```
 
-    The default values in `.env.example` are suitable for local development.
+git clone https://github.com/Danor93/ecommerce-cicd-pipeline.git
+cd ecommerce-cicd-pipeline
+cp .env.example .env
+docker-compose up --build -d
 
-3.  **Run with Docker Compose**
+```
 
-    ```bash
-    docker-compose up --build
-    ```
-
-4.  **Open the application**
-
-    Open [http://localhost:3000](http://localhost:3000) with your browser to see the result. The application may take a moment to start as the database initializes.
-
-### Legacy: Standard Local Development
-
-> **Note**: This method is not recommended for standard development as it runs outside the containerized environment. The project is now optimized for PostgreSQL and may not work correctly with the legacy SQLite setup without manual changes to the database connection logic.
-
-1.  **Install dependencies**
-
-    ```bash
-    yarn install
-    ```
-
-2.  **Run the development server**
-
-    ```bash
-    yarn dev
-    ```
-
-## 🗄️ Database Setup
-
-### PostgreSQL (via Docker)
-
-**No manual setup is required!** The Docker Compose workflow handles everything:
-
-- A PostgreSQL container is created and its data is persisted in a Docker volume.
-- The schema is automatically created on first run from the `db/init.sql` file.
-- The application then automatically seeds the database with initial users and products.
-
-### Initial Users (Auto-seeded)
-
-| Email             | Password | Role  |
-| ----------------- | -------- | ----- |
-| admin@example.com | admin123 | admin |
-| john@example.com  | john123  | user  |
-
-## 🔐 Login
-
-1. Navigate to [http://localhost:3000/login](http://localhost:3000/login)
-2. Use any of the credentials above (recommended: `admin@example.com` / `admin123`)
-3. You'll be redirected to the admin panel
+- **Application**: [http://localhost:3000](http://localhost:3000)
+- **Jenkins**: [http://localhost:8080](http://localhost:8080)
+- **Login**: admin@example.com / admin123
 
 ## 📱 Using the Admin Panel
 
@@ -153,20 +103,22 @@ The application provides RESTful API endpoints:
 ## 📁 Project Structure
 
 ```
+
 src/
 ├── app/
-│   ├── api/           # API routes (auth, products, store, etc.)
-│   ├── admin-panel/   # Admin dashboard page
-│   ├── cart/          # Shopping cart page
-│   ├── login/         # Login page
-│   ├── signup/        # Signup page
-│   ├── store/         # Customer-facing store page
-│   └── ...
-├── components/        # Reusable components
-│   └── ui/            # shadcn/ui components
-├── hooks/             # Custom React hooks (e.g., useMounted)
-├── lib/               # Core libraries (database, utils, toast)
-└── types/             # TypeScript definitions
+│ ├── api/ # API routes (auth, products, store, etc.)
+│ ├── admin-panel/ # Admin dashboard page
+│ ├── cart/ # Shopping cart page
+│ ├── login/ # Login page
+│ ├── signup/ # Signup page
+│ ├── store/ # Customer-facing store page
+│ └── ...
+├── components/ # Reusable components
+│ └── ui/ # shadcn/ui components
+├── hooks/ # Custom React hooks (e.g., useMounted)
+├── lib/ # Core libraries (database, utils, toast)
+└── types/ # TypeScript definitions
+
 ```
 
 ## 🔧 Development
@@ -219,3 +171,4 @@ src/
 - [shadcn/ui](https://ui.shadcn.com/) - Learn about the UI component library
 - [PostgreSQL Documentation](https://www.postgresql.org/docs/) - Learn about PostgreSQL database
 - [Tailwind CSS](https://tailwindcss.com/docs) - Learn about utility-first CSS framework
+```

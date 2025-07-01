@@ -1,66 +1,135 @@
-# Docker Compose file for setting up the production environment.
+# Docker Compose file for E-Commerce CI/CD Pipeline Environment
+#
+# This configuration sets up a complete development and CI/CD environment with:
+# - Next.js application (ecommerce dashboard)
+# - PostgreSQL database with persistent storage
+# - Jenkins CI/CD server with Docker-in-Docker capability
+#
+# Key Features:
+# - Persistent data volumes for database and Jenkins
+# - Network isolation and communication between services
+# - Docker socket mounting for Jenkins to build and push Docker images
+# - Health checks to ensure proper service startup order
 
 version: "3.8"
 
 services:
-  # The Next.js application service.
+  # ==================================================================
+  # NEXT.JS APPLICATION SERVICE
+  # ==================================================================
+  # The main e-commerce dashboard application built with Next.js
   next-app:
-    # Build the Docker image from the Dockerfile in the current directory.
+    # Build the Docker image from the Dockerfile in the current directory
+    # This creates an optimized production build of the Next.js application
     build:
       context: .
       dockerfile: Dockerfile
-    # Expose port 3000 from the container and map it to the host port defined by APP_PORT.
+
+    # Expose port 3000 from the container and map it to the host port
+    # Uses APP_PORT environment variable or defaults to 3000
     ports:
       - "${APP_PORT:-3000}:3000"
-    # Set environment variables for the application.
-    # These are passed to the Next.js app. The database connection details are needed.
+
+    # Environment variables for the Next.js application
+    # DATABASE_URL: Connection string for PostgreSQL database
+    # Note: Uses service name 'db' as hostname (Docker internal networking)
     environment:
       DATABASE_URL: postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB}?sslmode=disable
-    # This service depends on the 'db' service. It will wait for 'db' to be healthy before starting.
+
+    # Service dependency configuration
+    # Ensures the database is healthy before starting the Next.js app
+    # This prevents connection errors during application startup
     depends_on:
       db:
         condition: service_healthy
-    # Connect this service to the 'ecommerce-network'.
+
+    # Connect to custom network for secure service communication
     networks:
       - ecommerce-network
 
-  # The PostgreSQL database service.
+  # ==================================================================
+  # POSTGRESQL DATABASE SERVICE
+  # ==================================================================
+  # Production-ready PostgreSQL database with Alpine Linux (lightweight)
   db:
-    # Use the official PostgreSQL image.
+    # Use official PostgreSQL 15 with Alpine Linux (smaller image size)
     image: postgres:15-alpine
-    # Set environment variables for the database from the .env file.
+
+    # Database configuration from environment variables
+    # These values are loaded from .env file for security
     environment:
       POSTGRES_USER: ${POSTGRES_USER}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
       POSTGRES_DB: ${POSTGRES_DB}
-    # Mount a volume to persist database data across container restarts.
+
+    # Volume mounts for data persistence and initialization
     volumes:
+      # Persist database data across container restarts and rebuilds
       - postgres-data:/var/lib/postgresql/data
+      # Mount initialization scripts directory
+      # Any .sql files in ./db/ will be executed on first container startup
       - ./db:/docker-entrypoint-initdb.d
-    # Health check to ensure the database is ready before other services start.
+
+    # Health check configuration
+    # Tests database connectivity before marking service as healthy
+    # Other services can depend on this health status
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
-    # Connect this service to the 'ecommerce-network'.
+      interval: 10s # Check every 10 seconds
+      timeout: 5s # Timeout after 5 seconds
+      retries: 5 # Retry 5 times before marking as unhealthy
+
+    # Connect to custom network for secure communication
     networks:
       - ecommerce-network
 
-  # Jenkins service
+  # ==================================================================
+  # JENKINS CI/CD SERVICE
+  # ==================================================================
+  # Jenkins server configured for Docker-in-Docker operations
+  # This setup allows Jenkins to build and push Docker images
   jenkins:
+    # Use official Jenkins LTS (Long Term Support) image
     image: jenkins/jenkins:lts
+
+    # CRITICAL FIX #1: Privileged mode
+    # Required for Docker-in-Docker functionality
+    # Allows Jenkins container to manage Docker daemon
     privileged: true
+
+    # CRITICAL FIX #2: Run as root user
+    # Necessary for Docker socket access and package installation
     user: root
+
+    # Port mappings for Jenkins web interface and agent communication
     ports:
-      - "8080:8080"
-      - "50000:50000"
+      - "8080:8080" # Jenkins web UI
+      - "50000:50000" # Jenkins agent communication port
+
+    # Container name for easy reference and Docker commands
     container_name: jenkins
+
+    # Volume mounts - CRITICAL for Jenkins functionality
     volumes:
+      # CRITICAL FIX #3: Persist Jenkins configuration and data
+      # Maps local ./jenkins_home directory to container's Jenkins home
+      # Preserves plugins, jobs, and configuration across container restarts
       - ./jenkins_home:/var/jenkins_home
+
+      # CRITICAL FIX #4: Docker socket mounting
+      # Mounts host Docker socket into Jenkins container
+      # Enables Jenkins to build and manage Docker images (Docker-in-Docker)
+      # This is the key fix that allows our CI/CD pipeline to work
       - /var/run/docker.sock:/var/run/docker.sock
+
+    # Environment variables for Docker integration
     environment:
+      # Configure Docker host for Jenkins to use
       - DOCKER_HOST=unix:///var/run/docker.sock
+
+    # CRITICAL FIX #5: Custom startup command
+    # This command runs when the Jenkins container starts
+    # It performs essential setup for Docker functionality
     command: >
       bash -c "
         apt-get update &&
@@ -68,18 +137,38 @@ services:
         chmod 666 /var/run/docker.sock &&
         /usr/local/bin/jenkins.sh
       "
+    # Breakdown of the startup command:
+    # 1. apt-get update: Update package repositories
+    # 2. apt-get install -y docker.io: Install Docker CLI inside Jenkins container
+    # 3. chmod 666 /var/run/docker.sock: Set permissions on Docker socket
+    # 4. /usr/local/bin/jenkins.sh: Start Jenkins normally
+
+    # Network configuration
+    # Uses default network for external access while maintaining isolation
     networks:
       - default
 
-# Define the network for communication between services.
+# ==================================================================
+# NETWORK CONFIGURATION
+# ==================================================================
+# Define custom networks for service communication and isolation
 networks:
+  # Custom bridge network for secure communication between app and database
+  # Services on this network can communicate using service names as hostnames
   ecommerce-network:
     driver: bridge
+
+  # Default network for Jenkins and external access
+  # Allows Jenkins to access external services (GitHub, Docker Hub)
   default:
     driver: bridge
 
-# Define the volume for data persistence.
+# ==================================================================
+# VOLUME CONFIGURATION
+# ==================================================================
+# Define named volumes for data persistence
 volumes:
+  # PostgreSQL data persistence
+  # Ensures database data survives container restarts and rebuilds
   postgres-data:
     driver: local
-  db-data:
