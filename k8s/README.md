@@ -377,3 +377,23 @@ While this setup is optimized for local development with minikube, for productio
 ---
 
 🎉 **Happy Kubernetes deployment!** For any issues or questions, check the troubleshooting section above or refer to the official Kubernetes documentation.
+
+## 🛠️ CI/CD with Jenkins
+
+The application's automated pipeline continues to run from the root–level **`docker-compose.yml`**.  
+Start (or restart) Jenkins alongside your Kubernetes cluster with:
+
+```bash
+# From the project root
+docker compose up -d jenkins
+```
+
+Key points:
+
+1. The Jenkins container talks to the host Docker daemon via `/var/run/docker.sock`, so images it builds are immediately visible to Minikube (when using the default **docker driver**).
+2. After the image is built, the pipeline can either:
+   - Load it straight into the cluster: `minikube image load <image>:<tag>` (local only), or
+   - Push to a registry and let Kubernetes pull it.
+3. Deployment stages in your `Jenkinsfile` should execute `kubectl apply …` commands (or Helm) using a mounted kube-config (e.g., mount `~/.kube` into the Jenkins container).
+
+If you prefer an all-in-cluster approach, you can deploy Jenkins to Kubernetes later (Helm chart recommended), but keeping it in Docker-Compose is perfectly fine for local development.
