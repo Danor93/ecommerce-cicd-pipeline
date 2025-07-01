@@ -1,12 +1,6 @@
 pipeline {
     agent any
 
-    tools {
-        // Assuming Node.js is installed on the Jenkins agent
-        // If not, you might need a custom Docker agent image with Node.js
-        nodejs 'nodejs'
-    }
-
     stages {
         stage('Checkout') {
             steps {
@@ -14,12 +8,19 @@ pipeline {
             }
         }
         stage('Lint') {
+            agent {
+                docker {
+                    image 'node:20'
+                    args '-u 0:0'
+                }
+            }
             steps {
                 sh 'npm install'
                 sh 'npm run lint'
             }
         }
         stage('Build Docker Image') {
+            agent any
             steps {
                 script {
                     // Use Docker in Docker or host's Docker daemon via mounted socket
@@ -29,6 +30,7 @@ pipeline {
             }
         }
         stage('Push Docker Image') {
+            agent any
             steps {
                 script {
                     // Replace 'dockerhub-credentials' with the actual ID of your Docker Hub credentials in Jenkins
