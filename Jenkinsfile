@@ -33,7 +33,7 @@ pipeline {
          */
         stage('Checkout') {
             steps {
-                git branch: 'feature/phase-3-jenkins-setup', 
+                git branch: 'main', 
                     credentialsId: 'github-danors', 
                     url: 'https://github.com/Danor93/ecommerce-cicd-pipeline.git'
             }
