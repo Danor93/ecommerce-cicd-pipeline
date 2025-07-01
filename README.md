@@ -1,5 +1,14 @@
 # E-Commerce Admin Dashboard
 
+> **Quick Kubernetes Setup:**
+>
+> ```bash
+> # one-liner to deploy, inspect, or tear-down everything via interactive menu
+> cd k8s && ./menu.sh
+> ```
+>
+> The menu will guide you through deployment, live status checks, and cleanup in a few keystrokes.
+
 A modern, containerized e-commerce admin dashboard built with Next.js, PostgreSQL, and Docker. This project provides a complete product management system with user authentication, all running in a consistent and reproducible development environment.
 
 ## 🚀 Features
@@ -44,7 +53,7 @@ cd ecommerce-cicd-pipeline
 cp .env.example .env
 docker-compose up --build -d
 
-```
+````
 
 - **Application**: [http://localhost:3000](http://localhost:3000)
 - **Jenkins**: [http://localhost:8080](http://localhost:8080)
@@ -102,24 +111,25 @@ The application provides RESTful API endpoints:
 
 ## 📁 Project Structure
 
-```
-
-src/
-├── app/
-│ ├── api/ # API routes (auth, products, store, etc.)
-│ ├── admin-panel/ # Admin dashboard page
-│ ├── cart/ # Shopping cart page
-│ ├── login/ # Login page
-│ ├── signup/ # Signup page
-│ ├── store/ # Customer-facing store page
-│ └── ...
-├── components/ # Reusable components
-│ └── ui/ # shadcn/ui components
-├── hooks/ # Custom React hooks (e.g., useMounted)
-├── lib/ # Core libraries (database, utils, toast)
-└── types/ # TypeScript definitions
-
-```
+```text
+.
+├── k8s/                         # Kubernetes resources & helper scripts
+│   ├── manifests/               # YAML manifests (namespace, deployments, PV, etc.)
+│   ├── deploy.sh                # Automates deployment to Minikube
+│   ├── status.sh                # Shows detailed status overview
+│   ├── cleanup.sh               # Cleans up namespace / cluster resources
+│   └── menu.sh                  # Interactive menu (deploy · status · cleanup)
+├── src/                         # Next.js application source
+│   ├── app/                     # API routes & pages
+│   ├── components/              # Reusable UI components
+│   ├── hooks/                   # Custom React hooks
+│   ├── lib/                     # Utility & DB helpers
+│   └── types/                   # TypeScript definitions
+├── Jenkinsfile                  # Jenkins CI/CD pipeline
+├── Dockerfile                   # Docker build for Next.js app
+├── docker-compose.yml           # Local Docker development stack
+└── README.md                    # This file
+````
 
 ## 🔧 Development
 
@@ -171,4 +181,7 @@ src/
 - [shadcn/ui](https://ui.shadcn.com/) - Learn about the UI component library
 - [PostgreSQL Documentation](https://www.postgresql.org/docs/) - Learn about PostgreSQL database
 - [Tailwind CSS](https://tailwindcss.com/docs) - Learn about utility-first CSS framework
+
+```
+
 ```

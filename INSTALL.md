@@ -401,3 +401,12 @@ After successful installation:
 4. **Deploy to Production**: Follow production deployment guidelines
 
 Your E-Commerce CI/CD pipeline is now ready for development! 🚀
+
+> 🆕 **Alternative Local Kubernetes Setup**
+> If you prefer running the stack in a local Kubernetes cluster instead of Docker-Compose, jump to `k8s/menu.sh`:
+>
+> ```bash
+> cd k8s && ./menu.sh
+> ```
+>
+> The interactive menu lets you deploy, monitor, and clean up the cluster effortlessly.
