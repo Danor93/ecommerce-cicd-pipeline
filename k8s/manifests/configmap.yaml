@@ -1,0 +1,33 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: ecommerce-config
+  namespace: ecommerce
+  labels:
+    app: ecommerce
+data:
+  # Database configuration
+  POSTGRES_DB: "ecommerce_db"
+  POSTGRES_USER: "user"
+
+  # Application configuration
+  NODE_ENV: "production"
+  PORT: "3000"
+  APP_PORT: "3000"
+
+  # Database connection settings
+  DB_HOST: "postgres-service"
+  DB_PORT: "5432"
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: ecommerce-secrets
+  namespace: ecommerce
+  labels:
+    app: ecommerce
+type: Opaque
+data:
+  # Base64 encoded password (default: "ecommerce_password")
+  # To generate: echo -n "your_secure_password" | base64
+  POSTGRES_PASSWORD: ZWNvbW1lcmNlX3Bhc3N3b3Jk

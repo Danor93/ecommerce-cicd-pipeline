@@ -107,6 +107,8 @@ pipeline {
                     // Push to Docker Hub registry using stored credentials
                     docker.withRegistry('https://registry.hub.docker.com', 'dockerhub-danors') {
                         dockerImage.push()
+                        // Also push the 'latest' tag for Kubernetes default pull
+                        dockerImage.push('latest')
                     }
                 }
             }
