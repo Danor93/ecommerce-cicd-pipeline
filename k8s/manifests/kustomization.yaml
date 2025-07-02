@@ -1,3 +1,5 @@
+# Kustomization entry point – lists every resource that makes up the e-commerce stack
+# Keeping resources in one list makes applying and tearing down the app a single command
 resources:
   - namespace.yaml
   - configmap.yaml

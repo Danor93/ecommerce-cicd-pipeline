@@ -1,3 +1,4 @@
+# Logical grouping for all e-commerce resources
 apiVersion: v1
 kind: Namespace
 metadata:

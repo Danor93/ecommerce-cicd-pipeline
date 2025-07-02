@@ -1,3 +1,5 @@
+# Application + database configuration that is safe to commit
+# Credentials live in the Secret below so they are not exposed in plain-text
 apiVersion: v1
 kind: ConfigMap
 metadata:
