@@ -213,6 +213,7 @@ main() {
     setup_access
     install_argocd_cli
     setup_repository
+    install_image_updater
     
     echo
     echo -e "${GREEN}======================================${NC}"
@@ -220,11 +221,28 @@ main() {
     echo -e "${GREEN}======================================${NC}"
     echo
     echo -e "${YELLOW}Next steps:${NC}"
-    echo -e "1. Start port-forward: ${BLUE}kubectl port-forward svc/argocd-server -n argocd 8080:80${NC}"
-    echo -e "2. Open ArgoCD UI: ${BLUE}http://localhost:8080${NC}"
+    echo -e "1. Start port-forward: ${BLUE}kubectl port-forward svc/argocd-server -n argocd 8090:80${NC}"
+    echo -e "2. Open ArgoCD UI: ${BLUE}http://localhost:8090${NC}"
     echo -e "3. Create applications using the ArgoCD UI or CLI"
     echo -e "4. Check credentials in: ${BLUE}argocd-credentials.txt${NC}"
     echo
+}
+
+#------------------------------------------------------------------------------
+# ArgoCD Image Updater Installation
+#------------------------------------------------------------------------------
+
+install_image_updater() {
+    print_status "Installing ArgoCD Image Updater..."
+    
+    # Install ArgoCD Image Updater
+    kubectl apply -n argocd -f https://raw.githubusercontent.com/argoproj-labs/argocd-image-updater/stable/manifests/install.yaml
+    
+    # Wait for Image Updater to be ready
+    print_status "Waiting for ArgoCD Image Updater to be ready..."
+    kubectl wait --for=condition=available --timeout=300s deployment/argocd-image-updater -n argocd
+    
+    print_status "ArgoCD Image Updater installation completed ✓"
 }
 
 # Run main function

@@ -68,9 +68,10 @@ prompt_choice() {
   echo -e "  ${GREEN}11${NC}) Bootstrap ArgoCD Apps         ${YELLOW}(App of Apps pattern)${NC}"
   echo -e "  ${GREEN}12${NC}) Open ArgoCD UI                ${YELLOW}(port 8090)${NC}"
   echo -e "  ${GREEN}13${NC}) Show ArgoCD status"
+  echo -e "  ${GREEN}14${NC}) Install Image Updater         ${YELLOW}(auto-update Docker images)${NC}"
   echo -e "  ${RED}0${NC}) Exit"
   echo
-  read -rp "Enter choice [0-13]: " choice
+  read -rp "Enter choice [0-14]: " choice
 }
 
 #------------------------------------------------------------------------------
@@ -357,6 +358,30 @@ run_argocd_status() {
   read -p "Press Enter to return to the menu..." _
 }
 
+#------------------------------------------------------------------------------
+# run_argocd_image_updater
+# Installs ArgoCD Image Updater for automatic Docker image updates
+#------------------------------------------------------------------------------
+run_argocd_image_updater() {
+  echo -e "${GREEN}[INFO] $(date '+%Y-%m-%d %H:%M:%S')${NC} Installing ArgoCD Image Updater..." && echo
+  
+  # Check if ArgoCD is installed
+  if ! kubectl get namespace argocd &> /dev/null; then
+    echo -e "${RED}ArgoCD is not installed. Please install it first (option 10).${NC}"
+    sleep 3
+    return
+  fi
+  
+  if [[ -f "$SCRIPT_DIR/manage-argocd.sh" ]]; then
+    "$SCRIPT_DIR/manage-argocd.sh" image-updater
+    echo -e "${GREEN}Image Updater installed! ✓${NC}"
+    echo -e "${CYAN}Now Jenkins builds will automatically trigger GitOps deployments!${NC}"
+  else
+    echo -e "${RED}ArgoCD management script not found!${NC}"
+  fi
+  sleep 3
+}
+
 # Main loop (allows multiple operations in one session)
 while true; do
   clear
@@ -402,6 +427,9 @@ while true; do
       ;;
     13)
       run_argocd_status
+      ;;
+    14)
+      run_argocd_image_updater
       ;;
     0)
       echo -e "${YELLOW}Goodbye!${NC}"

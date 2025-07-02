@@ -45,6 +45,7 @@ print_help() {
     echo "  sync          Sync all applications"
     echo "  logs          Show application logs"
     echo "  restart       Restart ArgoCD server"
+    echo "  image-updater Install ArgoCD Image Updater"
     echo "  uninstall     Uninstall ArgoCD"
     echo "  password      Get admin password"
     echo "  help          Show this help message"
@@ -179,6 +180,26 @@ uninstall_argocd() {
     fi
 }
 
+install_image_updater() {
+    print_status "Installing ArgoCD Image Updater..."
+    
+    # Check if ArgoCD is installed
+    if ! kubectl get namespace argocd &> /dev/null; then
+        print_error "ArgoCD is not installed. Run '$0 install' first."
+        exit 1
+    fi
+    
+    # Install ArgoCD Image Updater
+    kubectl apply -n argocd -f https://raw.githubusercontent.com/argoproj-labs/argocd-image-updater/stable/manifests/install.yaml
+    
+    # Wait for Image Updater to be ready
+    print_status "Waiting for ArgoCD Image Updater to be ready..."
+    kubectl wait --for=condition=available --timeout=300s deployment/argocd-image-updater -n argocd
+    
+    print_status "ArgoCD Image Updater installation completed ✓"
+    print_status "Image Updater will now automatically update Docker images in Git when new versions are pushed!"
+}
+
 get_password() {
     if kubectl get secret -n argocd argocd-initial-admin-secret &> /dev/null; then
         PASSWORD=$(kubectl -n argocd get secret argocd-initial-admin-secret -o jsonpath="{.data.password}" | base64 -d)
@@ -218,6 +239,9 @@ case "${1:-}" in
         ;;
     restart)
         restart_argocd
+        ;;
+    image-updater)
+        install_image_updater
         ;;
     uninstall)
         uninstall_argocd

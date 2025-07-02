@@ -9,6 +9,11 @@ metadata:
     app.kubernetes.io/name: ecommerce-app
     app.kubernetes.io/part-of: ecommerce-platform
     app.kubernetes.io/component: backend
+  annotations:
+    # ArgoCD Image Updater configuration
+    argocd-image-updater.argoproj.io/image-list: ecommerce=danors/ecommerce-dashboard
+    argocd-image-updater.argoproj.io/write-back-method: git
+    argocd-image-updater.argoproj.io/git-branch: feature/argocd-implementation
 spec:
   project: ecommerce-project
   source:
