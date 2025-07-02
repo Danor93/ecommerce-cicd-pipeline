@@ -35,12 +35,12 @@ CYAN='\033[0;36m'
 NC='\033[0m' # No Colour
 
 # Script version (update when you make significant changes)
-SCRIPT_VERSION="1.0.1"
+SCRIPT_VERSION="1.1.0"
 
 header() {
   local line="╔══════════════════════════════════════════════════════════════════╗"
   local title="║            🚀  E-COMMERCE KUBERNETES MANAGER  🚀            ║"
-  local subtitle="║    Deploy · Status · Cleanup — all from a single interface     ║"
+  local subtitle="║  Deploy · Status · Cleanup · ArgoCD GitOps — unified interface ║"
   local version_line="║                       Version: $SCRIPT_VERSION                        ║"
 
   echo -e "${CYAN}${line}${NC}"
@@ -62,9 +62,15 @@ prompt_choice() {
   echo -e "  ${GREEN}7${NC}) Rollout restart a resource"
   echo -e "  ${GREEN}8${NC}) View pod logs"
   echo -e "  ${GREEN}9${NC}) Describe / debug a pod"
+  echo
+  echo -e "${CYAN}ArgoCD GitOps Management:${NC}"
+  echo -e "  ${GREEN}10${NC}) Install ArgoCD                ${YELLOW}(setup GitOps)${NC}"
+  echo -e "  ${GREEN}11${NC}) Bootstrap ArgoCD Apps         ${YELLOW}(App of Apps pattern)${NC}"
+  echo -e "  ${GREEN}12${NC}) Open ArgoCD UI                ${YELLOW}(port 8090)${NC}"
+  echo -e "  ${GREEN}13${NC}) Show ArgoCD status"
   echo -e "  ${RED}0${NC}) Exit"
   echo
-  read -rp "Enter choice [0-9]: " choice
+  read -rp "Enter choice [0-13]: " choice
 }
 
 #------------------------------------------------------------------------------
@@ -249,6 +255,108 @@ run_describe_pod() {
   kubectl describe pod "$SELECTED_POD" -n ecommerce | less -R
 }
 
+#------------------------------------------------------------------------------
+# ArgoCD Management Functions
+#------------------------------------------------------------------------------
+
+#------------------------------------------------------------------------------
+# run_argocd_install
+# Installs ArgoCD on the minikube cluster
+#------------------------------------------------------------------------------
+run_argocd_install() {
+  echo -e "${GREEN}[INFO] $(date '+%Y-%m-%d %H:%M:%S')${NC} Installing ArgoCD..." && echo
+  if [[ -f "$SCRIPT_DIR/setup-argocd.sh" ]]; then
+    "$SCRIPT_DIR/setup-argocd.sh"
+  else
+    echo -e "${RED}ArgoCD setup script not found!${NC}"
+    sleep 2
+    return
+  fi
+  echo -e "${GREEN}ArgoCD installation completed! ✓${NC}"
+  sleep 2
+}
+
+#------------------------------------------------------------------------------
+# run_argocd_bootstrap
+# Bootstraps the App of Apps pattern for GitOps deployment
+#------------------------------------------------------------------------------
+run_argocd_bootstrap() {
+  echo -e "${GREEN}[INFO] $(date '+%Y-%m-%d %H:%M:%S')${NC} Bootstrapping ArgoCD App of Apps..." && echo
+  
+  # Check if ArgoCD is installed
+  if ! kubectl get namespace argocd &> /dev/null; then
+    echo -e "${RED}ArgoCD is not installed. Please install it first (option 10).${NC}"
+    sleep 3
+    return
+  fi
+  
+  if [[ -f "$SCRIPT_DIR/manage-argocd.sh" ]]; then
+    "$SCRIPT_DIR/manage-argocd.sh" bootstrap
+    echo -e "${GREEN}Bootstrap completed! ✓${NC}"
+    echo -e "${CYAN}Your applications will now be managed by ArgoCD via GitOps!${NC}"
+  else
+    echo -e "${RED}ArgoCD management script not found!${NC}"
+  fi
+  sleep 3
+}
+
+#------------------------------------------------------------------------------
+# run_argocd_ui
+# Opens the ArgoCD UI via port-forwarding
+#------------------------------------------------------------------------------
+run_argocd_ui() {
+  echo -e "${GREEN}[INFO] $(date '+%Y-%m-%d %H:%M:%S')${NC} Starting ArgoCD UI..." && echo
+  
+  # Check if ArgoCD is installed
+  if ! kubectl get namespace argocd &> /dev/null; then
+    echo -e "${RED}ArgoCD is not installed. Please install it first (option 10).${NC}"
+    sleep 3
+    return
+  fi
+  
+  if [[ -f "$SCRIPT_DIR/manage-argocd.sh" ]]; then
+    echo -e "${YELLOW}Press Ctrl+C to stop the ArgoCD UI and return to menu${NC}"
+    echo -e "${CYAN}ArgoCD UI will be available at: http://localhost:8090${NC}"
+    echo
+    
+    # Run ArgoCD UI in the background to allow Ctrl+C handling
+    "$SCRIPT_DIR/manage-argocd.sh" ui &
+    UI_PID=$!
+    
+    # Trap Ctrl+C to cleanly exit
+    trap 'echo; read -rp "⚠️  Stop ArgoCD UI? (y/N): " yn; if [[ $yn =~ ^[Yy]$ ]]; then kill $UI_PID 2>/dev/null; trap - INT; echo -e "${GREEN}[INFO] ArgoCD UI stopped.${NC}"; return; fi' INT
+    
+    wait $UI_PID 2>/dev/null
+    trap - INT
+  else
+    echo -e "${RED}ArgoCD management script not found!${NC}"
+    sleep 2
+  fi
+}
+
+#------------------------------------------------------------------------------
+# run_argocd_status
+# Shows ArgoCD applications and their status
+#------------------------------------------------------------------------------
+run_argocd_status() {
+  echo -e "${GREEN}[INFO] $(date '+%Y-%m-%d %H:%M:%S')${NC} ArgoCD Status:" && echo
+  
+  # Check if ArgoCD is installed
+  if ! kubectl get namespace argocd &> /dev/null; then
+    echo -e "${RED}ArgoCD is not installed. Please install it first (option 10).${NC}"
+    sleep 3
+    return
+  fi
+  
+  if [[ -f "$SCRIPT_DIR/manage-argocd.sh" ]]; then
+    "$SCRIPT_DIR/manage-argocd.sh" status
+  else
+    echo -e "${RED}ArgoCD management script not found!${NC}"
+  fi
+  echo
+  read -p "Press Enter to return to the menu..." _
+}
+
 # Main loop (allows multiple operations in one session)
 while true; do
   clear
@@ -282,6 +390,18 @@ while true; do
       ;;
     9)
       run_describe_pod
+      ;;
+    10)
+      run_argocd_install
+      ;;
+    11)
+      run_argocd_bootstrap
+      ;;
+    12)
+      run_argocd_ui
+      ;;
+    13)
+      run_argocd_status
       ;;
     0)
       echo -e "${YELLOW}Goodbye!${NC}"

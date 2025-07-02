@@ -1,0 +1,69 @@
+apiVersion: argoproj.io/v1alpha1
+kind: AppProject
+metadata:
+  name: ecommerce-project
+  namespace: argocd
+  labels:
+    app.kubernetes.io/name: ecommerce-project
+    app.kubernetes.io/part-of: ecommerce-platform
+spec:
+  description: E-commerce CI/CD Pipeline Project
+
+  # Allow manifests to deploy from our Git repository
+  sourceRepos:
+    - "https://github.com/Danor93/ecommerce-cicd-pipeline.git"
+    - "https://github.com/Danor93/ecommerce-cicd-pipeline"
+
+  # Destinations where applications can be deployed
+  destinations:
+    - namespace: ecommerce
+      server: https://kubernetes.default.svc
+    - namespace: argocd
+      server: https://kubernetes.default.svc
+    - namespace: default
+      server: https://kubernetes.default.svc
+
+  # Allow all cluster-scoped resources to be created
+  clusterResourceWhitelist:
+    - group: "*"
+      kind: "*"
+
+  # Allow all namespaced resources to be created
+  namespaceResourceWhitelist:
+    - group: "*"
+      kind: "*"
+
+  # Roles for this project
+  roles:
+    - name: admin
+      description: Admin role for ecommerce project
+      policies:
+        - p, proj:ecommerce-project:admin, applications, *, ecommerce-project/*, allow
+        - p, proj:ecommerce-project:admin, repositories, *, *, allow
+        - p, proj:ecommerce-project:admin, certificates, *, *, allow
+      groups:
+        - ecommerce:admin
+
+    - name: developer
+      description: Developer role for ecommerce project
+      policies:
+        - p, proj:ecommerce-project:developer, applications, get, ecommerce-project/*, allow
+        - p, proj:ecommerce-project:developer, applications, sync, ecommerce-project/*, allow
+        - p, proj:ecommerce-project:developer, repositories, get, *, allow
+      groups:
+        - ecommerce:developer
+
+  # Sync windows - prevent deployments during maintenance hours
+  syncWindows:
+    - kind: allow
+      schedule: "0 6 * * *"
+      duration: 12h
+      applications:
+        - "*"
+      manualSync: true
+    - kind: deny
+      schedule: "0 22 * * *"
+      duration: 6h
+      applications:
+        - "*"
+      manualSync: false
