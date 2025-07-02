@@ -1,3 +1,4 @@
+# Exposes the Next.js service on http://ecommerce.local via NGINX ingress
 apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:

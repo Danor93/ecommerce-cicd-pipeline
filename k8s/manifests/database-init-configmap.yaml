@@ -1,3 +1,4 @@
+# SQL bootstrap for database – executed automatically by postgres image
 apiVersion: v1
 kind: ConfigMap
 metadata:

@@ -1,3 +1,4 @@
+# Local PersistentVolume + Claim so Postgres data survives pod restarts
 apiVersion: v1
 kind: PersistentVolume
 metadata:

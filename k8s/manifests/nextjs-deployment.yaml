@@ -1,3 +1,4 @@
+# Next.js deployment – starts after Postgres is ready and exposes port 3000
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -15,6 +16,7 @@ spec:
       labels:
         app: nextjs
     spec:
+      # Ensure DB is ready before the app starts to prevent crashloop
       initContainers:
         - name: wait-for-db
           image: postgres:15-alpine
