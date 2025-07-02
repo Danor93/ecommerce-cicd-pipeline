@@ -16,6 +16,15 @@ YELLOW='\033[1;33m'
 BLUE='\033[0;34m'
 NC='\033[0m' # No Color
 
+#------------------------------------------------------------------------------
+# Helper output functions (shared format across our bash utilities)
+#------------------------------------------------------------------------------
+#  print_status  – Green check-mark prefix for success messages
+#  print_warning – Yellow warning triangle for non-fatal issues
+#  print_error   – Red cross for errors that may abort execution
+#  print_info    – Blue info icon for neutral information
+#------------------------------------------------------------------------------
+
 print_header() {
     echo -e "${BLUE}▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓${NC}"
     echo -e "${BLUE}▓${NC}              E-COMMERCE KUBERNETES STATUS              ${BLUE}▓${NC}"
@@ -39,6 +48,11 @@ print_info() {
     echo -e "${BLUE}ℹ️  $(date '+%Y-%m-%d %H:%M:%S') $1${NC}"
 }
 
+#------------------------------------------------------------------------------
+# detect_os
+# Returns a short string describing the running OS so the script can give
+# platform-specific guidance ( macos | ubuntu | debian | redhat | linux | unknown )
+#------------------------------------------------------------------------------
 # Function to detect OS
 detect_os() {
     if [[ "$OSTYPE" == "darwin"* ]]; then
@@ -63,6 +77,11 @@ detect_os() {
     fi
 }
 
+#------------------------------------------------------------------------------
+# provide_installation_instructions <tool> <os>
+# Emit minimal hints on how to install a missing <tool> for the detected <os>.
+# Keeps the status script self-service friendly instead of failing silently.
+#------------------------------------------------------------------------------
 # Function to provide installation instructions
 provide_installation_instructions() {
     local tool=$1
@@ -288,6 +307,34 @@ if [ "$pv_status" = "Bound" ] && [ "$pvc_status" = "Bound" ]; then
     print_status "Persistent Volume Claim: Bound"
 else
     print_warning "PV Status: $pv_status, PVC Status: $pvc_status"
+fi
+
+echo
+echo "🛠️  DATABASE INITIALIZATION CHECK"
+echo "==============================="
+
+# Verify expected tables exist in Postgres
+postgres_pod=$(kubectl get pods -n ecommerce -l app=postgres -o jsonpath="{.items[0].metadata.name}" 2>/dev/null || echo "")
+if [ -z "$postgres_pod" ]; then
+    print_error "PostgreSQL pod not found — cannot verify DB schema"
+else
+    # Disable immediate exit for this block to handle potential psql errors gracefully
+    set +e
+    tables_present=$(kubectl exec -n ecommerce "$postgres_pod" -- bash -c "psql -U \$POSTGRES_USER -d \$POSTGRES_DB -tAc 'SELECT COUNT(*) FROM pg_tables WHERE schemaname=\'public\' AND tablename IN (\'users\',\'products\',\'cart_items\',\'orders\',\'order_items\');'" 2>/dev/null)
+    if [[ "$tables_present" == "5" ]]; then
+        print_status "Database schema: all tables present ✅"
+    else
+        print_warning "Database schema: expected 5 tables, found $tables_present"
+    fi
+
+    # Optional: check at least one admin/user row exists
+    user_count=$(kubectl exec -n ecommerce "$postgres_pod" -- bash -c "psql -U \$POSTGRES_USER -d \$POSTGRES_DB -tAc 'SELECT COUNT(*) FROM users;'" 2>/dev/null)
+    if [[ "$user_count" =~ ^[0-9]+$ ]]; then
+        print_status "Users table contains $user_count rows"
+    else
+        print_warning "Could not query users table"
+    fi
+    set -e
 fi
 
 echo

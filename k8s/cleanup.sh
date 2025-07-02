@@ -52,6 +52,10 @@ else
 fi
 
 # Parse flags
+#-------------------------------------------------------------------------------
+# Flag parsing
+#  --prune / --deep / --all : perform a deep cleanup (delete PVs, Docker prune)
+#-------------------------------------------------------------------------------
 DEEP_PRUNE=false
 for arg in "$@"; do
   case $arg in
@@ -99,6 +103,11 @@ if $DEEP_PRUNE; then
   docker builder prune -af
 fi
 
+#------------------------------------------------------------------------------
+# detect_os
+# Simple utility to return the current operating system so we can tailor
+# messages to the user at the end of the script.
+#------------------------------------------------------------------------------
 # Function to detect OS
 detect_os() {
   if [[ "$OSTYPE" == "darwin"* ]]; then

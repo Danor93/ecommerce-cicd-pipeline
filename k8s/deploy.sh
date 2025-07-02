@@ -9,6 +9,9 @@ set -e
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 cd "$SCRIPT_DIR"
 
+# Script version identifier
+SCRIPT_VERSION="1.0.1"
+
 echo "🚀 Starting e-commerce application deployment to Kubernetes..."
 
 # Colors for output
@@ -17,6 +20,15 @@ GREEN='\033[0;32m'
 YELLOW='\033[1;33m'
 BLUE='\033[0;34m'
 NC='\033[0m' # No Color
+
+#------------------------------------------------------------------------------
+# Helper output functions
+#------------------------------------------------------------------------------
+#  print_status  <msg> – Log a green INFO message (success)
+#  print_warning <msg> – Log a yellow WARNING message (non-fatal issues)
+#  print_error   <msg> – Log a red ERROR message (fatal/exit conditions)
+#  print_info    <msg> – Log a blue INFO message (general information)
+#------------------------------------------------------------------------------
 
 # Function to print colored output
 print_status() {
@@ -34,6 +46,13 @@ print_error() {
 print_info() {
     echo -e "${BLUE}[INFO] $(date '+%Y-%m-%d %H:%M:%S')${NC} $1"
 }
+
+#------------------------------------------------------------------------------
+# detect_os
+# Returns: a short identifier of the host operating system so we can
+#          offer platform-specific instructions ( macos | ubuntu | debian |
+#          redhat | linux | unknown ).
+#------------------------------------------------------------------------------
 
 # Function to detect OS
 detect_os() {
@@ -58,6 +77,13 @@ detect_os() {
         echo "unknown"
     fi
 }
+
+#------------------------------------------------------------------------------
+# provide_installation_instructions <tool> <os>
+# Prints minimal installation hints for the requested <tool> depending on
+# the detected <os>. The function keeps the script self-contained so that we
+# can guide the user instead of failing silently.
+#------------------------------------------------------------------------------
 
 # Function to provide installation instructions
 provide_installation_instructions() {
@@ -259,6 +285,9 @@ echo "• PostgreSQL: Ready with initialized schema"
 echo "• Next.js App: 2 replicas running" 
 echo "• Persistent Storage: 2Gi for database" 
 
+# Show script version
+print_info "Script version: $SCRIPT_VERSION" 
+
 echo 
 echo "🔍 Useful Commands:" 
 echo "===================" 
@@ -287,7 +316,33 @@ echo "kubectl delete namespace ecommerce"
 echo "minikube stop  # Stop the cluster" 
 echo "minikube delete  # Delete the cluster" 
 
-print_status "Fetching service URL... (press Ctrl+C when you are done)" 
-minikube service nextjs-service -n ecommerce --url
+################################################################################
+# Expose the service via minikube tunnel with safe Ctrl+C handling
+################################################################################
+
+# Try to reuse existing tunnel first
+URL=$(minikube service nextjs-service -n ecommerce --url 2>/dev/null | head -n 1)
+if [[ -n "$URL" ]] && curl -sfI "$URL" >/dev/null; then
+    print_status "Application already accessible at: $URL"
+    print_warning "Press Ctrl+C when you are done viewing the app"
+    # Idle loop waiting for user interrupt
+    while true; do sleep 3600; done & WAIT_PID=$!
+    trap 'echo; read -rp "⚠️  Stop exposing the service? (y/N): " yn; if [[ $yn =~ ^[Yy]$ ]]; then kill $WAIT_PID 2>/dev/null; trap - INT; print_status "Service tunnel closed."; exit 0; fi' INT
+    wait $WAIT_PID
+    trap - INT
+else
+    print_status "Opening service tunnel (press Ctrl+C to stop)" 
+    # Start minikube service in background so we can capture Ctrl+C
+    minikube service nextjs-service -n ecommerce &
+    SVC_PID=$!
+    sleep 2 # give minikube a moment to print URL
+    URL=$(minikube service nextjs-service -n ecommerce --url 2>/dev/null | head -n 1)
+    if [[ -n "$URL" ]]; then
+        print_status "Application exposed at: $URL"
+    fi
+    trap 'echo; read -rp "⚠️  Stop exposing the service? (y/N): " yn; if [[ $yn =~ ^[Yy]$ ]]; then kill $SVC_PID 2>/dev/null; trap - INT; print_status "Service tunnel closed."; exit 0; fi' INT
+    wait $SVC_PID 2>/dev/null
+    trap - INT
+fi
 
 print_status "Ready to go! 🚀" 
