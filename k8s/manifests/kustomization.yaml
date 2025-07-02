@@ -1,0 +1,7 @@
+resources:
+  - namespace.yaml
+  - configmap.yaml
+  - database-init-configmap.yaml
+  - persistent-volume.yaml
+  - postgres-deployment.yaml
+  - nextjs-deployment.yaml

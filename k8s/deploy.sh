@@ -197,18 +197,9 @@ print_status "Kubernetes cluster is accessible ✓"
 print_status "Creating namespace..."
 kubectl apply -f manifests/namespace.yaml
 
-# Apply ConfigMaps and Secrets
-print_status "Applying ConfigMaps and Secrets..."
-kubectl apply -f manifests/configmap.yaml
-kubectl apply -f manifests/database-init-configmap.yaml
-
-# Apply Persistent Volumes
-print_status "Setting up persistent storage..."
-kubectl apply -f manifests/persistent-volume.yaml
-
-# Deploy PostgreSQL
-print_status "Deploying PostgreSQL database..."
-kubectl apply -f manifests/postgres-deployment.yaml
+# Apply all manifests using Kustomize
+print_status "Applying Kubernetes manifests via Kustomize..."
+kubectl apply -k manifests
 
 # Wait for PostgreSQL to be ready
 print_status "Waiting for PostgreSQL to be ready..."
@@ -255,47 +246,48 @@ fi
 
 print_status "Deployment completed! 🎉"
 
-# Display service URL via minikube
-print_status "Fetching service URL..."
+# Build deployment summary BEFORE opening minikube service tunnel
+
+echo
+echo "📋 Deployment Summary:" 
+echo "======================" 
+echo "• OS: $OS" 
+echo "• Docker: Running" 
+echo "• Minikube: Running with docker driver" 
+echo "• Namespace: ecommerce" 
+echo "• PostgreSQL: Ready with initialized schema" 
+echo "• Next.js App: 2 replicas running" 
+echo "• Persistent Storage: 2Gi for database" 
+
+echo 
+echo "🔍 Useful Commands:" 
+echo "===================" 
+echo "# View all resources:" 
+echo "kubectl get all -n ecommerce" 
+echo 
+echo "# View logs:" 
+echo "kubectl logs -l app=nextjs -n ecommerce" 
+echo "kubectl logs -l app=postgres -n ecommerce" 
+echo 
+echo "# Port forward to access the application:" 
+echo "kubectl port-forward svc/nextjs-service 3000:3000 -n ecommerce" 
+echo "# Then access: http://localhost:3000" 
+echo 
+echo "# Access database directly:" 
+echo "kubectl port-forward svc/postgres-service 5432:5432 -n ecommerce" 
+echo "# Then connect: psql -h localhost -U ecommerce_user -d ecommerce" 
+echo 
+echo "# Minikube dashboard:" 
+echo "minikube dashboard" 
+
+echo 
+echo "🧹 To clean up everything:" 
+echo "=========================" 
+echo "kubectl delete namespace ecommerce" 
+echo "minikube stop  # Stop the cluster" 
+echo "minikube delete  # Delete the cluster" 
+
+print_status "Fetching service URL... (press Ctrl+C when you are done)" 
 minikube service nextjs-service -n ecommerce --url
-
-echo
-echo "📋 Deployment Summary:"
-echo "======================"
-echo "• OS: $OS"
-echo "• Docker: Running"
-echo "• Minikube: Running with docker driver"
-echo "• Namespace: ecommerce"
-echo "• PostgreSQL: Ready with initialized schema"
-echo "• Next.js App: 2 replicas running"
-echo "• Persistent Storage: 2Gi for database"
-
-echo
-echo "🔍 Useful Commands:"
-echo "==================="
-echo "# View all resources:"
-echo "kubectl get all -n ecommerce"
-echo
-echo "# View logs:"
-echo "kubectl logs -l app=nextjs -n ecommerce"
-echo "kubectl logs -l app=postgres -n ecommerce"
-echo
-echo "# Port forward to access the application:"
-echo "kubectl port-forward svc/nextjs-service 3000:3000 -n ecommerce"
-echo "# Then access: http://localhost:3000"
-echo
-echo "# Access database directly:"
-echo "kubectl port-forward svc/postgres-service 5432:5432 -n ecommerce"
-echo "# Then connect: psql -h localhost -U ecommerce_user -d ecommerce"
-echo
-echo "# Minikube dashboard:"
-echo "minikube dashboard"
-
-echo
-echo "🧹 To clean up everything:"
-echo "========================="
-echo "kubectl delete namespace ecommerce"
-echo "minikube stop  # Stop the cluster"
-echo "minikube delete  # Delete the cluster"
 
 print_status "Ready to go! 🚀" 

@@ -82,27 +82,17 @@ If you prefer to deploy step by step:
 # 1. Create namespace
 kubectl apply -f manifests/namespace.yaml
 
-# 2. Apply configurations
-kubectl apply -f manifests/configmap.yaml
-kubectl apply -f manifests/database-init-configmap.yaml
+# 2. Apply all application resources via Kustomize (everything except Ingress)
+kubectl apply -k manifests
 
-# 3. Set up storage
-kubectl apply -f manifests/persistent-volume.yaml
-
-# 4. Deploy database
-kubectl apply -f manifests/postgres-deployment.yaml
-
-# 5. Wait for database to be ready
+# 3. Wait for database to be ready
 kubectl wait --for=condition=ready pod -l app=postgres -n ecommerce --timeout=300s
 
-# 6. Build and load Next.js image
+# 4. Build and load Next.js image
 docker build -t ecommerce-nextjs:latest ..
 minikube image load ecommerce-nextjs:latest
 
-# 7. Deploy Next.js application
-kubectl apply -f manifests/nextjs-deployment.yaml
-
-# 8. Optional: Deploy ingress
+# 5. Optional: Deploy ingress (after NGINX-ingress addon is ready)
 kubectl apply -f manifests/ingress.yaml
 ```
 
@@ -111,13 +101,14 @@ kubectl apply -f manifests/ingress.yaml
 ```
 k8s/
 ├── manifests/
+│   ├── kustomization.yaml             # Declarative list of core resources (no Ingress)
 │   ├── namespace.yaml                 # Creates ecommerce namespace
 │   ├── configmap.yaml                 # App configuration & secrets
 │   ├── database-init-configmap.yaml   # SQL initialization script
 │   ├── persistent-volume.yaml         # Storage for PostgreSQL
 │   ├── postgres-deployment.yaml       # PostgreSQL database & service
 │   ├── nextjs-deployment.yaml         # Next.js app & service
-│   └── ingress.yaml                   # External access (optional)
+│   └── ingress.yaml                   # External access (applied separately)
 ├── deploy.sh                          # Deploy resources & (optional) build image
 ├── status.sh                          # Detailed status report of cluster
 ├── cleanup.sh                         # Tear-down namespace / cluster
