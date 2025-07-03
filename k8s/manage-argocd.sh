@@ -1,7 +1,21 @@
 #!/bin/bash
 
-# ArgoCD Management Script for E-commerce CI/CD Pipeline
-# This script provides easy management commands for ArgoCD operations
+# =============================================================================
+# ArgoCD Management Script (k8s/manage-argocd.sh)
+# ----------------------------------------------------------------------------
+# Provides developer-friendly commands for installing, bootstrapping and
+# operating Argo CD in a local **Minikube** environment.
+#
+# Key features / commands:
+#   • install        → Installs Argo CD and prerequisites
+#   • bootstrap      → Applies the *App-of-Apps* pattern (projects + apps)
+#   • ui             → Port-forwards Argo CD Server on localhost:8090
+#   • status / sync  → Quick health + sync helpers
+#   • image-updater  → Installs Argo CD Image Updater component
+#
+# This script is called directly or via the unified menu (`k8s/menu.sh` –
+# options 10-16).  The UI port (8090) aligns with the menu prompts & docs.
+# =============================================================================
 
 set -e
 

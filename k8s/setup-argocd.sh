@@ -1,5 +1,19 @@
 #!/bin/bash
 
+# =============================================================================
+# ArgoCD Setup Script (k8s/setup-argocd.sh)
+# ----------------------------------------------------------------------------
+# Installs upstream Argo CD into a local Minikube cluster, patches the server
+# for `--insecure` dev mode, and optionally installs supporting components
+# such as the Argo CD Image Updater.
+#
+# The script is normally invoked via `k8s/manage-argocd.sh install` or through
+# the interactive menu (option 10 / 15).  It creates the `argocd` namespace,
+# applies the official install manifest, waits for readiness, then appends the
+# `--insecure` flag so the UI can be accessed without TLS at
+# http://localhost:8090 (port-forwarded).
+# =============================================================================
+
 # ArgoCD Setup Script for E-commerce CI/CD Pipeline
 # This script sets up ArgoCD on minikube following GitOps best practices
 

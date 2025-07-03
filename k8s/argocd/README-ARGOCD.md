@@ -57,7 +57,11 @@ cd k8s
 ./manage-argocd.sh ui
 ```
 
-Open your browser to: http://localhost:8080
+Open your browser to: http://localhost:8090
+
+Tip: from the unified `k8s/menu.sh` you can now choose:
+• Option **15** – _Full ArgoCD Setup_ (install → bootstrap → UI)
+• Option **16** – _Open/Expose Prometheus_ from the new **monitoring** application
 
 Login credentials will be displayed in the terminal.
 

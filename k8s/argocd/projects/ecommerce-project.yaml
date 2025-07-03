@@ -1,3 +1,8 @@
+# --------------------------------------------------
+# Argo CD Project: ecommerce-project
+# Defines source repos and allowed destinations for the
+# e-commerce platform applications (ecommerce, monitoring, etc.).
+# --------------------------------------------------
 apiVersion: argoproj.io/v1alpha1
 kind: AppProject
 metadata:

@@ -62,6 +62,7 @@ prompt_choice() {
   echo -e "  ${GREEN}7${NC}) Rollout restart a resource"
   echo -e "  ${GREEN}8${NC}) View pod logs"
   echo -e "  ${GREEN}9${NC}) Describe / debug a pod"
+  echo -e "  ${GREEN}16${NC}) Open/Expose Prometheus (monitoring) via minikube service"
   echo
   echo -e "${CYAN}ArgoCD GitOps Management:${NC}"
   echo -e "  ${GREEN}10${NC}) Install ArgoCD                ${YELLOW}(setup GitOps)${NC}"
@@ -72,7 +73,7 @@ prompt_choice() {
   echo -e "  ${GREEN}15${NC}) Full ArgoCD Setup             ${YELLOW}(install → bootstrap → UI)${NC}"
   echo -e "  ${RED}0${NC}) Exit"
   echo
-  read -rp "Enter choice [0-15]: " choice
+  read -rp "Enter choice [0-16]: " choice
 }
 
 #------------------------------------------------------------------------------
@@ -404,6 +405,49 @@ run_argocd_full_setup() {
   run_argocd_ui
 }
 
+#------------------------------------------------------------------------------
+# run_open_monitoring
+# Expose Prometheus service from monitoring namespace via minikube.
+# Logic mirrors run_open_app but targets service 'prometheus' in 'monitoring'.
+#------------------------------------------------------------------------------
+run_open_monitoring() {
+  # Ensure minikube is running
+  if ! minikube status --format '{{.Host}}' 2>/dev/null | grep -q "Running"; then
+    echo -e "${RED}Minikube is not running. Start it with the deploy option first.${NC}"; sleep 2; return
+  fi
+
+  # Verify service exists
+  if ! kubectl get svc prometheus -n monitoring &>/dev/null; then
+    echo -e "${RED}Prometheus service not found in namespace 'monitoring'. Deploy first.${NC}"; sleep 2; return
+  fi
+
+  local url
+  url=$(minikube service prometheus -n monitoring --url 2>/dev/null | head -n 1)
+
+  if [[ -n "$url" ]] && curl -sfI "$url" >/dev/null; then
+    echo -e "${GREEN}✅ Prometheus already accessible at:${NC} $url"
+    echo -e "${YELLOW}Press Ctrl+C to stop the tunnel and return to the menu${NC}"
+    while true; do sleep 3600; done & WAIT_PID=$!
+    trap 'echo; read -rp "⚠️  Stop exposing the service? (y/N): " yn; if [[ $yn =~ ^[Yy]$ ]]; then kill $WAIT_PID 2>/dev/null; trap - INT; echo -e "${GREEN}[INFO] Service tunnel closed.${NC}"; return; fi' INT
+    wait $WAIT_PID
+    trap - INT
+    return
+  fi
+
+  echo -e "${GREEN}[INFO] $(date '+%Y-%m-%d %H:%M:%S')${NC} Opening Prometheus service (press Ctrl+C to stop)" && echo
+  minikube service prometheus -n monitoring &
+  SVC_PID=$!
+  sleep 2
+  url=$(minikube service prometheus -n monitoring --url 2>/dev/null | head -n 1)
+  if [[ -n "$url" ]]; then
+    echo -e "${GREEN}✅ Prometheus exposed at:${NC} $url"
+  fi
+
+  trap 'echo; read -rp "⚠️  Stop exposing the service? (y/N): " yn; if [[ $yn =~ ^[Yy]$ ]]; then kill $SVC_PID 2>/dev/null; trap - INT; echo -e "${GREEN}[INFO] Service tunnel closed.${NC}"; return; fi' INT
+  wait $SVC_PID 2>/dev/null
+  trap - INT
+}
+
 # Main loop (allows multiple operations in one session)
 while true; do
   clear
@@ -455,6 +499,9 @@ while true; do
       ;;
     15)
       run_argocd_full_setup
+      ;;
+    16)
+      run_open_monitoring
       ;;
     0)
       echo -e "${YELLOW}Goodbye!${NC}"

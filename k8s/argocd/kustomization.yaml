@@ -1,3 +1,7 @@
+# ----------------------------------------------------------------------------
+# Kustomization for Argo CD declarative resources
+# Includes projects, applications and bootstrap app under this directory.
+# ----------------------------------------------------------------------------
 apiVersion: kustomize.config.k8s.io/v1beta1
 kind: Kustomization
 

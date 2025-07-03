@@ -1,3 +1,8 @@
+# --------------------------------------------------
+# Argo CD Application: monitoring-app
+# Deploys Prometheus monitoring stack from k8s/monitoring
+# into the `monitoring` namespace.
+# --------------------------------------------------
 apiVersion: argoproj.io/v1alpha1
 kind: Application
 metadata:

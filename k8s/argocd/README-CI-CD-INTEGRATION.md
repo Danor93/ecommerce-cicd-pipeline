@@ -100,8 +100,10 @@ kubectl get pods -n argocd -l app.kubernetes.io/name=argocd-image-updater
 # Check ArgoCD applications
 ./manage-argocd.sh status
 
-# Or use the menu
-./menu.sh  # Option 13: Show ArgoCD status
+# Or use the menu (updated list)
+./menu.sh  # Option 13: Show ArgoCD status, 15: Full ArgoCD setup, 16: Open Prometheus
+
+ArgoCD UI is now forwarded on **http://localhost:8090** when you run `./manage-argocd.sh ui` (or menu option 12).
 ```
 
 ### View Git Commits

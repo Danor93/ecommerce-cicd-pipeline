@@ -1,3 +1,8 @@
+# --------------------------------------------------
+# Argo CD Application: ecommerce-app
+# Deploys core e-commerce stack (Next.js + Postgres)
+# from k8s/manifests into the `ecommerce` namespace.
+# --------------------------------------------------
 apiVersion: argoproj.io/v1alpha1
 kind: Application
 metadata:
