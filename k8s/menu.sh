@@ -69,9 +69,10 @@ prompt_choice() {
   echo -e "  ${GREEN}12${NC}) Open ArgoCD UI                ${YELLOW}(port 8090)${NC}"
   echo -e "  ${GREEN}13${NC}) Show ArgoCD status"
   echo -e "  ${GREEN}14${NC}) Install Image Updater         ${YELLOW}(auto-update Docker images)${NC}"
+  echo -e "  ${GREEN}15${NC}) Full ArgoCD Setup             ${YELLOW}(install → bootstrap → UI)${NC}"
   echo -e "  ${RED}0${NC}) Exit"
   echo
-  read -rp "Enter choice [0-14]: " choice
+  read -rp "Enter choice [0-15]: " choice
 }
 
 #------------------------------------------------------------------------------
@@ -382,6 +383,27 @@ run_argocd_image_updater() {
   sleep 3
 }
 
+#------------------------------------------------------------------------------
+# run_argocd_full_setup
+# Convenience wrapper that performs install → bootstrap → UI in one go.
+#------------------------------------------------------------------------------
+run_argocd_full_setup() {
+  echo -e "${GREEN}[INFO] $(date '+%Y-%m-%d %H:%M:%S')${NC} Running full ArgoCD setup (install → bootstrap → UI)" && echo
+
+  # Step 1: Install ArgoCD (if not already present)
+  if ! kubectl get namespace argocd &> /dev/null; then
+    run_argocd_install || return
+  else
+    echo -e "${YELLOW}ArgoCD already installed – skipping install step.${NC}"
+  fi
+
+  # Step 2: Bootstrap applications
+  run_argocd_bootstrap
+
+  # Step 3: Open the UI (blocks until user exits)
+  run_argocd_ui
+}
+
 # Main loop (allows multiple operations in one session)
 while true; do
   clear
@@ -430,6 +452,9 @@ while true; do
       ;;
     14)
       run_argocd_image_updater
+      ;;
+    15)
+      run_argocd_full_setup
       ;;
     0)
       echo -e "${YELLOW}Goodbye!${NC}"

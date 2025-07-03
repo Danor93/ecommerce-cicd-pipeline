@@ -62,6 +62,22 @@ print_help() {
 
 install_argocd() {
     print_status "Installing ArgoCD..."
+    # Ensure curl exists on Linux systems for setup script
+    if ! command -v curl &> /dev/null; then
+        print_warning "curl not found. Attempting to install..."
+        if [[ "$(uname -s)" == "Linux" ]]; then
+            if command -v apt-get &> /dev/null; then
+                sudo apt-get update -y && sudo apt-get install -y curl
+            elif command -v yum &> /dev/null; then
+                sudo yum install -y curl
+            elif command -v dnf &> /dev/null; then
+                sudo dnf install -y curl
+            else
+                print_error "Unsupported Linux distribution. Please install curl manually."
+                exit 1
+            fi
+        fi
+    fi
     bash "$SCRIPT_DIR/setup-argocd.sh"
 }
 

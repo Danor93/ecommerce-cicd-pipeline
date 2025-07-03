@@ -50,6 +50,27 @@ check_prerequisites() {
         exit 1
     fi
     
+    # Ensure curl is installed (required for downloading ArgoCD CLI)
+    if ! command -v curl &> /dev/null; then
+        print_warning "curl not found. Attempting to install..."
+
+        if [[ "$(uname -s)" == "Linux" ]]; then
+            if command -v apt-get &> /dev/null; then
+                sudo apt-get update -y && sudo apt-get install -y curl
+            elif command -v yum &> /dev/null; then
+                sudo yum install -y curl
+            elif command -v dnf &> /dev/null; then
+                sudo dnf install -y curl
+            else
+                print_error "Unsupported Linux distribution. Please install curl manually."
+                exit 1
+            fi
+        else
+            print_error "curl is required but not installed. Please install curl and re-run the script."
+            exit 1
+        fi
+    fi
+    
     print_status "Prerequisites check passed ✓"
 }
 
@@ -86,16 +107,7 @@ configure_argocd() {
     
     # Patch ArgoCD server to be insecure (for local development)
     print_status "Configuring ArgoCD server for local development..."
-    kubectl patch deployment argocd-server -n argocd --patch='
-    spec:
-      template:
-        spec:
-          containers:
-          - name: argocd-server
-            command:
-            - argocd-server
-            - --insecure
-    '
+    kubectl patch deployment argocd-server -n argocd --type json -p '[{"op":"add","path":"/spec/template/spec/containers/0/args/-","value":"--insecure"}]'
     
     # Wait for the deployment to be ready
     kubectl rollout status deployment/argocd-server -n argocd
