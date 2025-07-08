@@ -1,0 +1,158 @@
+# ==============================================================================
+# 🛠️ ArgoCD Application: local-dev-tools (Local Development Utilities)
+# ==============================================================================
+#
+# PURPOSE:
+#   Deploys development tools and utilities specifically for local development
+#   environment. This includes tools for debugging, monitoring, and development
+#   workflows that are not needed in production.
+#
+# DEVELOPMENT TOOLS INCLUDED:
+#   🔍 kubectl-debug pods for container inspection
+#   📊 Kubernetes Dashboard for cluster visualization
+#   🗄️ PgAdmin for PostgreSQL database management
+#   📝 Local development documentation server
+#   🔧 Development utilities and helpers
+#
+# LOCAL DEVELOPMENT BENEFITS:
+#   ✅ Easy database management via PgAdmin web UI
+#   ✅ Cluster visualization via Kubernetes Dashboard
+#   ✅ Development debugging tools
+#   ✅ Local documentation access
+#   ✅ Development workflow enhancements
+#
+# ACCESS ENDPOINTS (when port-forwarded):
+#   - PgAdmin: http://localhost:5050 (Database management)
+#   - K8s Dashboard: http://localhost:9999 (Cluster overview)
+#   - Documentation: http://localhost:8080 (Local docs)
+#
+# HOW TO ACCESS:
+#   kubectl port-forward -n dev-tools svc/pgadmin 5050:80
+#   kubectl port-forward -n dev-tools svc/kubernetes-dashboard 9999:80
+#
+# NOTE: This application is OPTIONAL and designed for development convenience.
+#       Comment out in kustomization.yaml if not needed.
+# ==============================================================================
+
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: local-dev-tools
+  namespace: argocd
+  finalizers:
+    # Ensures proper cleanup when application is deleted
+    - resources-finalizer.argocd.argoproj.io
+  labels:
+    # Standard Kubernetes labels for better organization
+    app.kubernetes.io/name: local-dev-tools
+    app.kubernetes.io/part-of: ecommerce-platform
+    app.kubernetes.io/component: development-tools
+    app.kubernetes.io/version: "1.0.0"
+    app.kubernetes.io/managed-by: argocd
+    # Development specific labels
+    environment: local
+    deployment-type: development
+    tool-category: development-utilities
+  annotations:
+    # ==================================================================
+    # 📝 Documentation Links (Local Development Resources)
+    # ==================================================================
+    documentation: "k8s/argocd/README-ARGOCD.md"
+    pgadmin-docs: "https://www.pgadmin.org/docs/"
+    k8s-dashboard-docs: "https://kubernetes.io/docs/tasks/access-application-cluster/web-ui-dashboard/"
+    local-access-pgadmin: "kubectl port-forward -n dev-tools svc/pgadmin 5050:80"
+    local-access-dashboard: "kubectl port-forward -n dev-tools svc/kubernetes-dashboard 9999:80"
+
+    # ==================================================================
+    # ⚠️ Important Notes for Local Development
+    # ==================================================================
+    warning: "These tools are for LOCAL DEVELOPMENT ONLY - not for production"
+    security-note: "Tools may have relaxed security settings for local convenience"
+
+spec:
+  # Reference to the ArgoCD project that defines permissions and policies
+  project: ecommerce-project
+
+  # ==================================================================
+  # 📂 Source Configuration (Git Repository)
+  # ==================================================================
+  source:
+    # Main repository containing development tool manifests
+    repoURL: https://github.com/Danor93/ecommerce-cicd-pipeline.git
+    targetRevision: main # Track main branch
+    path: k8s/dev-tools # Path containing development tool manifests
+
+    # Directory configuration
+    directory:
+      recurse: true # Include subdirectories for organized tools
+
+  # ==================================================================
+  # 🎯 Destination Configuration (Where to Deploy)
+  # ==================================================================
+  destination:
+    # Deploy to local Kubernetes cluster
+    server: https://kubernetes.default.svc
+    namespace: dev-tools # Dedicated namespace for development tools
+
+  # ==================================================================
+  # 🔄 Sync Policy (Development-Friendly Configuration)
+  # ==================================================================
+  syncPolicy:
+    # Manual sync for development tools (avoid unnecessary overhead)
+    # Uncomment automated section if you want auto-deployment
+    # automated:
+    #   prune: true
+    #   selfHeal: true
+    #   allowEmpty: false
+
+    # Sync options optimized for development tools
+    syncOptions:
+      - CreateNamespace=true # Auto-create dev-tools namespace
+      - PrunePropagationPolicy=foreground # Wait for deletion before sync
+      - PruneLast=true # Delete old resources after new ones are ready
+      - Validate=false # Skip validation for faster development
+      - ApplyOutOfSyncOnly=true # Only sync resources that changed
+
+    # Retry policy for development tools
+    retry:
+      limit: 3 # Fewer retries for dev tools
+      backoff:
+        duration: 10s # Start with 10 second delay
+        factor: 2 # Double delay each retry
+        maxDuration: 2m # Maximum 2 minutes between retries
+
+  # ==================================================================
+  # 📊 Application Configuration
+  # ==================================================================
+  # Keep fewer revisions for development tools
+  revisionHistoryLimit: 3
+
+  # ==================================================================
+  # 🩺 Health Check & Diff Ignore Configuration
+  # ==================================================================
+  # Relaxed health checks for development tools
+  ignoreDifferences:
+    - group: apps
+      kind: Deployment
+      jsonPointers:
+        - /spec/replicas # Allow manual scaling of dev tools
+        - /spec/template/spec/containers/*/resources # Allow resource adjustments
+    # Ignore common development tool differences
+    - group: ""
+      kind: Service
+      jsonPointers:
+        - /spec/clusterIP # Ignore auto-assigned cluster IPs
+    - group: ""
+      kind: ConfigMap
+      jsonPointers:
+        - /data # Allow runtime configuration changes for dev tools
+    - group: ""
+      kind: Secret
+      jsonPointers:
+        - /data # Allow credential updates for dev tools
+    # Ignore persistent volume differences
+    - group: ""
+      kind: PersistentVolumeClaim
+      jsonPointers:
+        - /spec/resources/requests/storage # Allow storage adjustments
+        - /status # Ignore PVC status differences

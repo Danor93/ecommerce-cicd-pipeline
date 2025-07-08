@@ -1,25 +1,148 @@
 # 🚀 Installation & Setup Guide
 
-This guide provides comprehensive instructions for setting up the E-Commerce Admin Dashboard with Jenkins CI/CD pipeline integration.
+This guide provides comprehensive instructions for setting up the E-Commerce Admin Dashboard with Jenkins CI/CD pipeline and ArgoCD GitOps integration.
+
+## 🎯 Setup Options
+
+Choose your preferred setup method:
+
+- **🚀 Option 1: Complete GitOps Setup** (Recommended) - One-click deployment with ArgoCD automation
+- **🐳 Option 2: Traditional Docker Compose** - Manual deployment for learning or testing
+- **⚙️ Option 3: Kubernetes + Manual ArgoCD** - Step-by-step GitOps configuration
 
 ## 📋 Prerequisites
 
-Before starting, ensure you have the following installed on your system:
+### For All Setup Options:
 
 - **Docker** (version 20.10 or higher)
-- **Docker Compose** (version 2.0 or higher)
 - **Git** (for repository management)
 - **Node.js 18.x or higher** (for local development, optional)
-- **npm or yarn** package manager (optional for local development)
+
+### For GitOps Setup (Option 1 & 3):
+
+- **Kubernetes cluster** (minikube, kind, k3s, or cloud provider)
+- **kubectl** (version 1.20 or higher)
+- **Docker Compose** (version 2.0 or higher) - for Jenkins CI/CD
+
+### For Traditional Setup (Option 2):
+
+- **Docker Compose** (version 2.0 or higher)
 
 ### System Requirements
 
 - **Operating System**: macOS, Linux, or Windows with WSL2
-- **RAM**: Minimum 4GB, Recommended 8GB+
-- **Storage**: At least 5GB free space
+- **RAM**: Minimum 6GB (8GB+ recommended for Kubernetes)
+- **Storage**: At least 10GB free space
 - **Network**: Internet connection for downloading Docker images and dependencies
 
-## 🐳 Docker & Application Setup
+### Quick Kubernetes Setup
+
+If you don't have Kubernetes running:
+
+```bash
+# Install minikube (recommended for local development)
+# macOS
+brew install minikube
+
+# Linux
+curl -LO https://storage.googleapis.com/minikube/releases/latest/minikube-linux-amd64
+sudo install minikube-linux-amd64 /usr/local/bin/minikube
+
+# Start Kubernetes cluster
+minikube start --memory=4096 --cpus=4
+```
+
+## 🚀 Option 1: Complete GitOps Setup (Recommended)
+
+This is the fastest way to get everything running with full automation.
+
+### Step 1: Clone the Repository
+
+```bash
+git clone https://github.com/Danor93/ecommerce-cicd-pipeline.git
+cd ecommerce-cicd-pipeline
+```
+
+### Step 2: One-Click Setup
+
+```bash
+cd k8s && ./menu.sh
+# Choose option 17: Deploy Everything + GitOps
+```
+
+This will automatically:
+
+1. ✅ Deploy the e-commerce application (Next.js + PostgreSQL)
+2. ✅ Install ArgoCD GitOps engine
+3. ✅ Install ArgoCD Image Updater for automatic deployments
+4. ✅ Bootstrap applications via GitOps
+5. ✅ Open ArgoCD UI for monitoring
+
+### Step 3: Access Your Applications
+
+After setup completes:
+
+```bash
+# Access the application
+kubectl port-forward -n ecommerce svc/nextjs-service 3000:3000
+# → http://localhost:3000
+
+# ArgoCD UI (automatically opened by setup)
+# → http://localhost:8090
+
+# Setup Jenkins for CI/CD (see Jenkins section below)
+```
+
+### Step 4: Verify GitOps Workflow
+
+1. **Check ArgoCD Apps**: Go to http://localhost:8090
+2. **Default login**: `admin` / Get password with:
+   ```bash
+   kubectl get secret argocd-initial-admin-secret -n argocd -o jsonpath="{.data.password}" | base64 -d
+   ```
+
+**That's it!** Your complete GitOps environment is ready. Jump to the [Jenkins CI/CD Setup](#-jenkins-cicd-pipeline-setup) section to enable automatic builds.
+
+## ⚙️ Option 3: Manual ArgoCD Setup
+
+For learning or custom configuration:
+
+### Step 1: Deploy Application First
+
+```bash
+cd k8s && ./menu.sh
+# Choose option 1: Deploy application
+```
+
+### Step 2: Install ArgoCD
+
+```bash
+cd k8s && ./menu.sh
+# Choose option 10: Install ArgoCD
+```
+
+### Step 3: Install Image Updater
+
+```bash
+cd k8s && ./menu.sh
+# Choose option 14: Install Image Updater
+```
+
+### Step 4: Bootstrap Applications
+
+```bash
+cd k8s && ./menu.sh
+# Choose option 11: Bootstrap ArgoCD Apps
+```
+
+### Step 5: Access ArgoCD UI
+
+```bash
+cd k8s && ./menu.sh
+# Choose option 12: Open ArgoCD UI
+```
+
+## 🐳 Option 2: Traditional Docker Compose Setup
 
 ### Step 1: Clone the Repository
 
@@ -75,7 +198,39 @@ This command will:
 2. **Jenkins**: Open [http://localhost:8080](http://localhost:8080)
 3. **Database**: PostgreSQL runs on `localhost:5432`
 
+## 🔄 GitOps Workflow Overview
+
+Once you have ArgoCD set up (via Option 1 or 3), your development workflow becomes:
+
+```
+Developer → Git Push → Jenkins CI → Docker Hub → ArgoCD → Kubernetes
+```
+
+### How It Works:
+
+1. **Code Changes**: Make changes and push to Git repository
+2. **Jenkins Builds**: Automatically triggered, builds Docker image `danors/ecommerce-dashboard:BUILD_NUMBER`
+3. **Image Registry**: Jenkins pushes image to Docker Hub
+4. **ArgoCD Detects**: Image Updater polls Docker Hub every 2 minutes for new images
+5. **Git Update**: ArgoCD automatically commits updated image tag to Git
+6. **Deployment**: ArgoCD syncs changes and deploys to Kubernetes
+
+### Monitoring GitOps:
+
+```bash
+# Check ArgoCD application status
+cd k8s && ./menu.sh  # Option 13: Show ArgoCD status
+
+# View ArgoCD UI
+cd k8s && ./menu.sh  # Option 12: Open ArgoCD UI
+
+# Check Image Updater logs
+kubectl logs -n argocd deployment/argocd-image-updater -f
+```
+
 ## 🔧 Jenkins CI/CD Pipeline Setup
+
+**Note**: If you used Option 1 (Complete GitOps Setup), you still need to configure Jenkins for CI/CD integration. The ArgoCD setup enables automatic deployments, but Jenkins handles the build process.
 
 ### Step 1: Initial Jenkins Configuration
 
@@ -181,7 +336,7 @@ docker exec jenkins jenkins-plugin-cli --plugins docker-workflow github credenti
      - SCM: `Git`
      - Repository URL: `https://github.com/Danor93/ecommerce-cicd-pipeline.git`
      - Credentials: Select `github-danors`
-     - Branch: `*/feature/phase-3-jenkins-setup`
+     - Branch: `*/main` (or your target branch)
      - Script Path: `Jenkinsfile`
 
 3. **Save Configuration**
@@ -212,7 +367,7 @@ Ensure your latest changes are committed and pushed:
 ```bash
 git add .
 git commit -m "Setup Jenkins CI/CD pipeline"
-git push origin feature/phase-3-jenkins-setup
+git push origin main
 ```
 
 ### Step 2: Trigger Build
@@ -234,6 +389,50 @@ Your pipeline will execute these stages:
 2. **Lint** ✅ - Runs ESLint code quality checks
 3. **Build Docker Image** ✅ - Creates production Docker image
 4. **Push Docker Image** ✅ - Pushes to Docker Hub registry
+
+## 🔄 Testing Complete GitOps Workflow
+
+If you set up ArgoCD (Option 1 or 3), test the end-to-end automation:
+
+### Step 1: Make a Code Change
+
+```bash
+# Make a small change to trigger the workflow
+echo "// GitOps test" >> src/app/page.tsx
+git add .
+git commit -m "Test GitOps workflow"
+git push origin main
+```
+
+### Step 2: Monitor the Process
+
+1. **Jenkins Build**: Watch build progress at http://localhost:8080
+2. **Docker Hub**: Verify new image pushed with build number tag
+3. **ArgoCD UI**: Monitor at http://localhost:8090
+   - Check Image Updater logs
+   - Watch application sync status
+   - Verify new deployment
+
+### Step 3: Verify Deployment
+
+```bash
+# Check if new pods are running with updated image
+kubectl get pods -n ecommerce
+kubectl describe pod <pod-name> -n ecommerce | grep Image
+
+# Check ArgoCD application status
+cd k8s && ./menu.sh  # Option 13: Show ArgoCD status
+```
+
+### Expected Timeline:
+
+- **Jenkins Build**: 2-5 minutes
+- **Image Detection**: Up to 2 minutes (ArgoCD Image Updater polling)
+- **Git Update**: 30 seconds
+- **ArgoCD Sync**: 30 seconds - 2 minutes
+- **Pod Deployment**: 1-3 minutes
+
+**Total**: 5-12 minutes for complete automation from code commit to running deployment.
 
 ## 🗄️ Database Information
 
@@ -296,26 +495,67 @@ docker logs ecommerce-cicd-pipeline-db-1
 docker-compose restart db
 ```
 
-#### 3. Build Fails - Docker Permission Issues
+#### 3. ArgoCD Applications Not Syncing
+
+```bash
+# Check ArgoCD status
+kubectl get applications -n argocd
+
+# Check ArgoCD logs
+kubectl logs -n argocd deployment/argocd-application-controller -f
+
+# Force sync application
+kubectl patch application ecommerce-app -n argocd -p '{"operation":{"sync":{}}}' --type=merge
+```
+
+#### 4. Image Updater Not Working
+
+```bash
+# Check Image Updater status
+kubectl get pods -n argocd -l app.kubernetes.io/name=argocd-image-updater
+
+# Check Image Updater logs
+kubectl logs -n argocd deployment/argocd-image-updater -f
+
+# Common issues:
+# - Docker Hub rate limiting
+# - Invalid image annotations
+# - Network connectivity
+```
+
+#### 5. Kubernetes Resources Stuck
+
+```bash
+# Check pod status
+kubectl get pods -n ecommerce
+
+# Describe problematic pods
+kubectl describe pod <pod-name> -n ecommerce
+
+# Check events
+kubectl get events -n ecommerce --sort-by='.lastTimestamp'
+```
+
+#### 6. Build Fails - Docker Permission Issues
 
 ```bash
 # Ensure Docker socket is properly mounted
 # Check docker-compose.yml volumes configuration
 ```
 
-#### 4. GitHub Authentication Failed
+#### 7. GitHub Authentication Failed
 
 - Verify GitHub Personal Access Token is valid
 - Check token has correct permissions (repo, admin:repo_hook)
 - Ensure credentials ID in Jenkins matches Jenkinsfile
 
-#### 5. Docker Hub Push Failed
+#### 8. Docker Hub Push Failed
 
 - Verify Docker Hub credentials in Jenkins
 - Check Docker Hub repository exists
 - Ensure access token has write permissions
 
-#### 6. Node.js Dependencies Installation Failed
+#### 9. Node.js Dependencies Installation Failed
 
 ```bash
 # Clear npm cache in container
@@ -327,23 +567,45 @@ docker-compose build --no-cache
 
 ### Logs and Debugging
 
-**View all service logs**:
+**Docker Compose services**:
 
 ```bash
+# View all service logs
 docker-compose logs -f
-```
 
-**View specific service logs**:
-
-```bash
+# View specific service logs
 docker-compose logs -f jenkins
 docker-compose logs -f db
 docker-compose logs -f next-app
 ```
 
+**Kubernetes/ArgoCD logs**:
+
+```bash
+# ArgoCD application controller
+kubectl logs -n argocd deployment/argocd-application-controller -f
+
+# ArgoCD Image Updater
+kubectl logs -n argocd deployment/argocd-image-updater -f
+
+# Application pods
+kubectl logs -n ecommerce deployment/nextjs-deployment -f
+kubectl logs -n ecommerce deployment/postgres-deployment -f
+
+# All ArgoCD components
+kubectl logs -n argocd --all-containers=true -f
+```
+
 **Jenkins build logs**:
 
 - Access via Jenkins UI → Job → Build Number → Console Output
+
+**Menu script debugging**:
+
+```bash
+# Enable verbose output in menu script
+cd k8s && DEBUG=1 ./menu.sh
+```
 
 ## 🔐 Security Considerations
 
@@ -395,18 +657,33 @@ For additional help, refer to:
 
 After successful installation:
 
+### For GitOps Setup (Option 1 & 3):
+
+1. **Explore ArgoCD UI**: Monitor applications at http://localhost:8090
+2. **Test GitOps Workflow**: Make code changes and watch automatic deployments
+3. **Monitor Image Updates**: Check ArgoCD Image Updater for new builds
+4. **Use Menu Commands**: `cd k8s && ./menu.sh` for all operations
+
+### For All Setups:
+
 1. **Explore the Application**: Login with admin credentials
-2. **Test CI/CD Pipeline**: Make code changes and trigger builds
+2. **Test CI/CD Pipeline**: Configure Jenkins and trigger builds
 3. **Customize Configuration**: Adapt to your specific requirements
 4. **Deploy to Production**: Follow production deployment guidelines
 
-Your E-Commerce CI/CD pipeline is now ready for development! 🚀
+### Quick Reference Commands:
 
-> 🆕 **Alternative Local Kubernetes Setup**
-> If you prefer running the stack in a local Kubernetes cluster instead of Docker-Compose, jump to `k8s/menu.sh`:
->
-> ```bash
-> cd k8s && ./menu.sh
-> ```
->
-> The interactive menu lets you deploy, monitor, and clean up the cluster effortlessly.
+```bash
+# Complete deployment and monitoring
+cd k8s && ./menu.sh  # Option 17: Deploy Everything + GitOps
+
+# Check status of all components
+cd k8s && ./menu.sh  # Option 13: Show ArgoCD status
+
+# Access services
+cd k8s && ./menu.sh  # Option 12: Open ArgoCD UI
+```
+
+Your E-Commerce CI/CD pipeline with GitOps automation is now ready! 🚀
+
+**Pro Tip**: Use the menu script (`./menu.sh`) for all operations - it provides guided workflows for deployment, monitoring, and troubleshooting.

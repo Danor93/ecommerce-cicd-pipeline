@@ -71,9 +71,12 @@ prompt_choice() {
   echo -e "  ${GREEN}13${NC}) Show ArgoCD status"
   echo -e "  ${GREEN}14${NC}) Install Image Updater         ${YELLOW}(auto-update Docker images)${NC}"
   echo -e "  ${GREEN}15${NC}) Full ArgoCD Setup             ${YELLOW}(install → bootstrap → UI)${NC}"
+  echo
+  echo -e "${CYAN}Complete Local Development Setup:${NC}"
+  echo -e "  ${GREEN}17${NC}) Deploy Everything + GitOps    ${YELLOW}(app + ArgoCD + UI - one-click setup)${NC}"
   echo -e "  ${RED}0${NC}) Exit"
   echo
-  read -rp "Enter choice [0-16]: " choice
+  read -rp "Enter choice [0-17]: " choice
 }
 
 #------------------------------------------------------------------------------
@@ -406,6 +409,85 @@ run_argocd_full_setup() {
 }
 
 #------------------------------------------------------------------------------
+# run_complete_setup
+# Ultimate convenience function: deploys app + full ArgoCD GitOps setup + UI
+# Perfect for local development - one command to rule them all!
+#------------------------------------------------------------------------------
+run_complete_setup() {
+  echo -e "${CYAN}╔══════════════════════════════════════════════════════════════════╗${NC}"
+  echo -e "${CYAN}║          🚀 COMPLETE LOCAL DEVELOPMENT SETUP 🚀                ║${NC}"
+  echo -e "${CYAN}║  Deploy App → ArgoCD → Image Updater → GitOps → UI              ║${NC}"
+  echo -e "${CYAN}╚══════════════════════════════════════════════════════════════════╝${NC}"
+  echo
+
+  # Ask if user wants to build Docker image
+  local build_choice
+  read -rp "Build Docker image before deploying? (y/N): " build_choice
+  echo
+
+  echo -e "${GREEN}[STEP 1/6]${NC} Deploying E-commerce Application..."
+  echo -e "${CYAN}=========================================${NC}"
+  if [[ $build_choice =~ ^[Yy]$ ]]; then
+    run_deploy "--build" || { echo -e "${RED}❌ Application deployment failed!${NC}"; return 1; }
+  else
+    run_deploy || { echo -e "${RED}❌ Application deployment failed!${NC}"; return 1; }
+  fi
+  echo -e "${GREEN}✅ Application deployed successfully!${NC}"
+  echo
+
+  echo -e "${GREEN}[STEP 2/6]${NC} Installing ArgoCD..."
+  echo -e "${CYAN}============================${NC}"
+  if ! kubectl get namespace argocd &> /dev/null; then
+    run_argocd_install || { echo -e "${RED}❌ ArgoCD installation failed!${NC}"; return 1; }
+  else
+    echo -e "${YELLOW}✅ ArgoCD already installed – skipping install step.${NC}"
+  fi
+  echo
+
+  echo -e "${GREEN}[STEP 3/6]${NC} Installing ArgoCD Image Updater..."
+  echo -e "${CYAN}========================================${NC}"
+  # Check if Image Updater is already installed
+  if kubectl get deployment argocd-image-updater -n argocd &> /dev/null; then
+    echo -e "${YELLOW}✅ ArgoCD Image Updater already installed – skipping.${NC}"
+  else
+    run_argocd_image_updater || { echo -e "${RED}❌ Image Updater installation failed!${NC}"; return 1; }
+  fi
+  echo
+
+  echo -e "${GREEN}[STEP 4/6]${NC} Bootstrapping ArgoCD Applications..."
+  echo -e "${CYAN}===========================================${NC}"
+  run_argocd_bootstrap || { echo -e "${RED}❌ Bootstrap failed!${NC}"; return 1; }
+  echo
+
+  echo -e "${GREEN}[STEP 5/6]${NC} Checking GitOps Status..."
+  echo -e "${CYAN}================================${NC}"
+  sleep 3  # Give ArgoCD a moment to sync
+  run_argocd_status
+  echo
+
+  echo -e "${GREEN}[STEP 6/6]${NC} Opening ArgoCD UI..."
+  echo -e "${CYAN}============================${NC}"
+  echo -e "${GREEN}🎉 COMPLETE SETUP FINISHED! 🎉${NC}"
+  echo
+  echo -e "${CYAN}Your local development environment is ready:${NC}"
+  echo -e "  ✅ E-commerce application deployed"
+  echo -e "  ✅ ArgoCD GitOps engine installed"
+  echo -e "  ✅ Automatic image updates configured"
+  echo -e "  ✅ Applications bootstrapped via GitOps"
+  echo
+  echo -e "${YELLOW}Next steps:${NC}"
+  echo -e "  • ArgoCD UI: http://localhost:8090"
+  echo -e "  • Application: Use option 6 to expose the app"
+  echo -e "  • Jenkins CI/CD will now automatically deploy via GitOps!"
+  echo
+  echo -e "${YELLOW}Press any key to open ArgoCD UI (Ctrl+C to skip)...${NC}"
+  read -n 1 -s -r
+
+  # Open ArgoCD UI (user can Ctrl+C to exit)
+  run_argocd_ui
+}
+
+#------------------------------------------------------------------------------
 # run_open_monitoring
 # Expose Prometheus service from monitoring namespace via minikube.
 # Logic mirrors run_open_app but targets service 'prometheus' in 'monitoring'.
@@ -502,6 +584,9 @@ while true; do
       ;;
     16)
       run_open_monitoring
+      ;;
+    17)
+      run_complete_setup
       ;;
     0)
       echo -e "${YELLOW}Goodbye!${NC}"

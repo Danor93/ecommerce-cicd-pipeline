@@ -79,3 +79,5 @@ node_modules/
 
 # Jenkins home
 jenkins_home/
+
+/k8s/argocd-credentials.txt

@@ -1,24 +1,134 @@
-# ----------------------------------------------------------------------------
-# Kustomization for Argo CD declarative resources
-# Includes projects, applications and bootstrap app under this directory.
-# ----------------------------------------------------------------------------
+# ==============================================================================
+# 🔧 Kustomization for ArgoCD Declarative Resources (Local Development)
+# ==============================================================================
+#
+# PURPOSE:
+#   This Kustomization file provides a single entry point to deploy all
+#   ArgoCD resources (projects, applications, and bootstrap components)
+#   for the e-commerce platform in a local development environment.
+#
+# WHAT IT INCLUDES:
+#   📂 Projects      → ecommerce-project.yaml (permissions & policies)
+#   📱 Applications  → ecommerce-app.yaml (main application)
+#   📊 Monitoring    → monitoring-app.yaml (Prometheus stack)
+#   🚀 Bootstrap     → app-of-apps.yaml (automated deployment)
+#
+# LOCAL DEVELOPMENT FEATURES:
+#   ✅ Consistent labeling across all ArgoCD resources
+#   ✅ Proper namespace organization
+#   ✅ Environment-specific configurations
+#   ✅ Development-friendly resource limits
+#
+# DEPLOYMENT OPTIONS:
+#   Option 1 (Recommended): Use app-of-apps pattern
+#     kubectl apply -f k8s/argocd/bootstrap/app-of-apps.yaml
+#
+#   Option 2: Deploy all resources directly
+#     kubectl apply -k k8s/argocd/
+#
+#   Option 3: Deploy individual components
+#     kubectl apply -f k8s/argocd/projects/
+#     kubectl apply -f k8s/argocd/applications/
+#
+# MONITORING & ACCESS:
+#   - ArgoCD UI: http://localhost:8090 (kubectl port-forward svc/argocd-server -n argocd 8090:80)
+#   - Applications: Available in ArgoCD UI under "Applications"
+#   - Sync Status: Monitor via ArgoCD UI or kubectl get applications -n argocd
+# ==============================================================================
+
 apiVersion: kustomize.config.k8s.io/v1beta1
 kind: Kustomization
 
 metadata:
   name: argocd-resources
   annotations:
+    # Mark this as a local configuration file (not deployed to cluster)
     config.kubernetes.io/local-config: "true"
+    # Documentation references for local development
+    documentation: "k8s/argocd/README-ARGOCD.md"
+    deployment-guide: "k8s/argocd/README-CI-CD-INTEGRATION.md"
+    repository: "https://github.com/Danor93/ecommerce-cicd-pipeline"
 
+# ==============================================================================
+# 📂 Resources (All ArgoCD Components)
+# ==============================================================================
 resources:
-  # ArgoCD Projects
+  # -------------------------------------------------------------------------
+  # 🏗️ ArgoCD Projects (Define permissions and policies)
+  # -------------------------------------------------------------------------
   - projects/ecommerce-project.yaml
 
-  # ArgoCD Applications
-  - applications/ecommerce-app.yaml
+  # -------------------------------------------------------------------------
+  # 📱 ArgoCD Applications (Define what gets deployed)
+  # -------------------------------------------------------------------------
+  - applications/ecommerce-app.yaml # Main e-commerce application
+  - applications/monitoring-app.yaml # Prometheus monitoring stack
 
+  # -------------------------------------------------------------------------
+  # 🛠️ Development Tools (Optional - Comment out if not needed)
+  # -------------------------------------------------------------------------
+  # - applications/local-dev-tools.yaml   # PgAdmin, K8s Dashboard, Dev utilities
+
+  # -------------------------------------------------------------------------
+  # 🚀 Bootstrap Applications (Optional - App of Apps pattern)
+  # -------------------------------------------------------------------------
+  # Uncomment to use App of Apps pattern instead of direct application deployment
+  # - bootstrap/app-of-apps.yaml
+
+# ==============================================================================
+# 🏷️ Common Labels (Applied to all resources)
+# ==============================================================================
 commonLabels:
+  # Standard ArgoCD and Kubernetes labels
   app.kubernetes.io/managed-by: argocd
   app.kubernetes.io/part-of: ecommerce-platform
 
+  # Local development specific labels
+  environment: local
+  deployment-type: development
+
+  # Platform identification
+  platform: ecommerce-cicd-pipeline
+  gitops-tool: argocd
+
+# ==============================================================================
+# 🎯 Target Namespace (Where ArgoCD resources are created)
+# ==============================================================================
 namespace: argocd
+
+# ==============================================================================
+# 🔧 Patches (Local Development Customizations)
+# ==============================================================================
+patches:
+  # Add local development annotations to all applications
+  - target:
+      kind: Application
+    patch: |-
+      - op: add
+        path: /metadata/annotations/local-development
+        value: "true"
+      - op: add
+        path: /metadata/annotations/development-mode
+        value: "enabled"
+
+# ==============================================================================
+# 📝 Additional Local Development Notes
+# ==============================================================================
+#
+# TROUBLESHOOTING:
+#   - If applications don't sync: Check ArgoCD has access to the Git repository
+#   - If image updates don't work: Ensure ArgoCD Image Updater is installed
+#   - If namespace issues: Verify CreateNamespace=true in syncOptions
+#   - If permission issues: Check the ecommerce-project.yaml permissions
+#
+# CUSTOMIZATION:
+#   - To disable monitoring: Comment out applications/monitoring-app.yaml
+#   - To add new apps: Create new YAML files in applications/ directory
+#   - To modify permissions: Update projects/ecommerce-project.yaml
+#   - To change sync behavior: Modify syncPolicy in individual applications
+#
+# SECURITY:
+#   - This configuration is for LOCAL DEVELOPMENT only
+#   - Production deployments should use more restrictive permissions
+#   - Consider using separate branches for different environments
+# ==============================================================================
