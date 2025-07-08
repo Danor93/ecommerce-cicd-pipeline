@@ -1,0 +1,142 @@
+# ==============================================================================
+# 📊 ArgoCD Application: monitoring-app (Enhanced for Local Development)
+# ==============================================================================
+#
+# PURPOSE:
+#   Deploys Prometheus monitoring stack from k8s/monitoring into the
+#   `monitoring` namespace for observability of the e-commerce platform.
+#
+# LOCAL DEVELOPMENT FEATURES:
+#   ✅ Lightweight Prometheus setup suitable for local development
+#   ✅ Application metrics collection
+#   ✅ Automatic namespace creation
+#   ✅ Local development resource limits
+#   ✅ Easy access via port-forwarding
+#
+# MONITORING ENDPOINTS:
+#   - Prometheus UI: http://localhost:9090 (when port-forwarded)
+#   - Metrics endpoint: http://localhost:9090/metrics
+#   - Targets: http://localhost:9090/targets
+#
+# TO ENABLE:
+#   1. Ensure k8s/monitoring manifests exist
+#   2. Uncomment this application in app-of-apps.yaml or apply manually
+#   3. Access via: kubectl port-forward -n monitoring svc/prometheus 9090:9090
+#
+# WHAT IT MONITORS:
+#   - E-commerce Next.js application health and performance
+#   - PostgreSQL database metrics
+#   - Kubernetes cluster resources
+#   - Custom business metrics from your application
+# ==============================================================================
+
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: monitoring-app
+  namespace: argocd
+  finalizers:
+    # Ensures proper cleanup when application is deleted
+    - resources-finalizer.argocd.argoproj.io
+  labels:
+    # Standard Kubernetes labels for better organization
+    app.kubernetes.io/name: monitoring-app
+    app.kubernetes.io/part-of: ecommerce-platform
+    app.kubernetes.io/component: monitoring
+    app.kubernetes.io/version: "1.0.0"
+    app.kubernetes.io/managed-by: argocd
+    # Local development specific labels
+    environment: local
+    deployment-type: development
+    monitoring-stack: prometheus
+  annotations:
+    # ==================================================================
+    # 📝 Documentation Links (Local Development Resources)
+    # ==================================================================
+    documentation: "k8s/monitoring/README.md"
+    prometheus-docs: "https://prometheus.io/docs/"
+    grafana-setup: "https://grafana.com/docs/grafana/latest/setup-grafana/"
+    local-access: "kubectl port-forward -n monitoring svc/prometheus 9090:9090"
+
+spec:
+  # Reference to the ArgoCD project that defines permissions and policies
+  project: ecommerce-project
+
+  # ==================================================================
+  # 📂 Source Configuration (Git Repository)
+  # ==================================================================
+  source:
+    # Main repository containing monitoring manifests
+    repoURL: https://github.com/Danor93/ecommerce-cicd-pipeline.git
+    targetRevision: main # Fixed: Changed from feature/argocd-implementation to main
+    path: k8s/monitoring # Path containing Prometheus manifests
+
+    # Optional: Directory-specific configuration
+    directory:
+      recurse: true # Include subdirectories if any
+
+  # ==================================================================
+  # 🎯 Destination Configuration (Where to Deploy)
+  # ==================================================================
+  destination:
+    # Deploy to local Kubernetes cluster
+    server: https://kubernetes.default.svc
+    namespace: monitoring # Dedicated namespace for monitoring components
+
+  # ==================================================================
+  # 🔄 Sync Policy (Automated GitOps Behavior)
+  # ==================================================================
+  syncPolicy:
+    # Automated sync for immediate updates (great for local development)
+    automated:
+      prune: true # Remove resources not in Git (keep cluster clean)
+      selfHeal: true # Fix any manual changes (enforce GitOps)
+      allowEmpty: false # Don't sync if no resources found (safety check)
+
+    # Sync options optimized for local monitoring stack
+    syncOptions:
+      - CreateNamespace=true # Auto-create monitoring namespace
+      - PrunePropagationPolicy=foreground # Wait for deletion before sync
+      - PruneLast=true # Delete old resources after new ones are ready
+      - Validate=false # Skip validation for faster local development
+      - ApplyOutOfSyncOnly=true # Only sync resources that changed
+
+    # Retry policy for monitoring stack (can be resource intensive)
+    retry:
+      limit: 5 # Try up to 5 times
+      backoff:
+        duration: 10s # Start with 10 second delay (monitoring needs more time)
+        factor: 2 # Double delay each retry
+        maxDuration: 5m # Maximum 5 minutes between retries (monitoring is heavy)
+
+  # ==================================================================
+  # 📊 Application Configuration
+  # ==================================================================
+  # Keep last 5 revisions (monitoring changes less frequently)
+  revisionHistoryLimit: 5
+
+  # ==================================================================
+  # 🩺 Health Check & Diff Ignore Configuration
+  # ==================================================================
+  # Ignore differences common in monitoring deployments
+  ignoreDifferences:
+    - group: apps
+      kind: Deployment
+      jsonPointers:
+        - /spec/replicas # Ignore replica count differences
+        - /spec/template/spec/containers/*/resources # Allow resource adjustments
+    # Ignore monitoring-specific resource differences
+    - group: ""
+      kind: Service
+      jsonPointers:
+        - /spec/clusterIP # Ignore auto-assigned cluster IPs
+    - group: ""
+      kind: ConfigMap
+      jsonPointers:
+        - /data # Allow runtime configuration changes
+    # Ignore PVC differences for persistent monitoring data
+    - group: ""
+      kind: PersistentVolumeClaim
+      jsonPointers:
+        - /spec/resources/requests/storage # Allow storage size changes
+        - /status # Ignore PVC status differences

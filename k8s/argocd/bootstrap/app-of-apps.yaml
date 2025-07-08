@@ -1,0 +1,124 @@
+# ==============================================================================
+# 🚀 ArgoCD "App of Apps" Pattern - Bootstrap Application (Local Development)
+# ==============================================================================
+#
+# PURPOSE:
+#   This is the root ArgoCD application that bootstraps all other applications
+#   in the e-commerce platform. It monitors k8s/argocd/applications/ and
+#   automatically deploys any applications defined there.
+#
+# THE "APP OF APPS" PATTERN:
+#   Instead of manually applying each ArgoCD Application, this pattern uses
+#   a single "parent" application that manages all "child" applications:
+#
+#   app-of-apps (this file)
+#   ├── ecommerce-app.yaml    → Deploys Next.js + PostgreSQL
+#   └── monitoring-app.yaml   → Deploys Prometheus monitoring
+#
+# LOCAL DEVELOPMENT BENEFITS:
+#   ✅ Single point of control for all applications
+#   ✅ Automatic discovery of new applications
+#   ✅ Consistent deployment patterns
+#   ✅ Easy rollback of entire platform
+#   ✅ GitOps for application definitions themselves
+#
+# HOW TO DEPLOY:
+#   kubectl apply -f k8s/argocd/bootstrap/app-of-apps.yaml
+#
+# MONITORING:
+#   - ArgoCD UI: http://localhost:8090/applications
+#   - This app: http://localhost:8090/applications/argocd/app-of-apps
+# ==============================================================================
+
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: app-of-apps
+  namespace: argocd
+  finalizers:
+    # Ensures proper cleanup when application is deleted
+    # IMPORTANT: This will also delete ALL child applications!
+    - resources-finalizer.argocd.argoproj.io
+  labels:
+    # Standard Kubernetes labels for better organization
+    app.kubernetes.io/name: app-of-apps
+    app.kubernetes.io/part-of: ecommerce-platform
+    app.kubernetes.io/component: bootstrap
+    app.kubernetes.io/version: "1.0.0"
+    app.kubernetes.io/managed-by: argocd
+    # Special labels for the bootstrap application
+    deployment-pattern: app-of-apps
+    environment: local
+    deployment-type: development
+  annotations:
+    # ==================================================================
+    # 📝 Documentation Links (Local Development Resources)
+    # ==================================================================
+    documentation: "k8s/argocd/README-ARGOCD.md"
+    pattern-docs: "https://argo-cd.readthedocs.io/en/stable/operator-manual/cluster-bootstrapping/"
+    repository: "https://github.com/Danor93/ecommerce-cicd-pipeline"
+    applications-path: "k8s/argocd/applications/"
+
+spec:
+  # Use default project for bootstrap (has broad permissions)
+  project: default
+
+  # ==================================================================
+  # 📂 Source Configuration (Git Repository)
+  # ==================================================================
+  source:
+    # Main repository containing application definitions
+    repoURL: https://github.com/Danor93/ecommerce-cicd-pipeline.git
+    targetRevision: main # Fixed: Changed from feature/argocd-implementation to main
+    path: k8s/argocd/applications # Path containing ArgoCD Application manifests
+
+    # Optional: Directory-specific configuration
+    directory:
+      recurse: true # Include subdirectories for organized app structure
+      jsonnet: {} # Enable Jsonnet support if needed
+
+  # ==================================================================
+  # 🎯 Destination Configuration (Where to Deploy)
+  # ==================================================================
+  destination:
+    # Deploy child applications to the ArgoCD namespace
+    server: https://kubernetes.default.svc
+    namespace: argocd # Applications themselves go in argocd namespace
+
+  # ==================================================================
+  # 🔄 Sync Policy (Bootstrap-Specific Configuration)
+  # ==================================================================
+  syncPolicy:
+    # Automated sync for immediate application deployment
+    automated:
+      prune: true # Remove applications not in Git (careful with this!)
+      selfHeal: true # Fix any manual changes to applications
+      allowEmpty: false # Don't sync if no applications found (safety check)
+
+    # Sync options optimized for application management
+    syncOptions:
+      - CreateNamespace=true # Auto-create namespaces as needed
+      - PrunePropagationPolicy=foreground # Wait for app deletion before sync
+      - PruneLast=true # Delete old apps after new ones are ready
+      - Validate=true # Validate application definitions (important!)
+      - ApplyOutOfSyncOnly=true # Only sync applications that changed
+
+    # Retry policy for application deployment
+    retry:
+      limit: 5 # Try up to 5 times
+      backoff:
+        duration: 5s # Start with 5 second delay
+        factor: 2 # Double delay each retry
+        maxDuration: 3m # Maximum 3 minutes between retries
+
+  # ==================================================================
+  # 📊 Application Configuration
+  # ==================================================================
+  # Keep last 10 revisions for easy rollbacks (important for bootstrap app)
+  revisionHistoryLimit: 10
+
+  # ==================================================================
+  # 🩺 Health Check Configuration
+  # ==================================================================
+  # The app-of-apps is healthy when all child applications are healthy
+  # ArgoCD automatically determines this based on child application status

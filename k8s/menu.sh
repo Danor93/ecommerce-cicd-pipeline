@@ -35,12 +35,12 @@ CYAN='\033[0;36m'
 NC='\033[0m' # No Colour
 
 # Script version (update when you make significant changes)
-SCRIPT_VERSION="1.0.1"
+SCRIPT_VERSION="1.1.0"
 
 header() {
   local line="╔══════════════════════════════════════════════════════════════════╗"
   local title="║            🚀  E-COMMERCE KUBERNETES MANAGER  🚀            ║"
-  local subtitle="║    Deploy · Status · Cleanup — all from a single interface     ║"
+  local subtitle="║  Deploy · Status · Cleanup · ArgoCD GitOps — unified interface ║"
   local version_line="║                       Version: $SCRIPT_VERSION                        ║"
 
   echo -e "${CYAN}${line}${NC}"
@@ -62,9 +62,21 @@ prompt_choice() {
   echo -e "  ${GREEN}7${NC}) Rollout restart a resource"
   echo -e "  ${GREEN}8${NC}) View pod logs"
   echo -e "  ${GREEN}9${NC}) Describe / debug a pod"
+  echo -e "  ${GREEN}16${NC}) Open/Expose Prometheus (monitoring) via minikube service"
+  echo
+  echo -e "${CYAN}ArgoCD GitOps Management:${NC}"
+  echo -e "  ${GREEN}10${NC}) Install ArgoCD                ${YELLOW}(setup GitOps)${NC}"
+  echo -e "  ${GREEN}11${NC}) Bootstrap ArgoCD Apps         ${YELLOW}(App of Apps pattern)${NC}"
+  echo -e "  ${GREEN}12${NC}) Open ArgoCD UI                ${YELLOW}(port 8090)${NC}"
+  echo -e "  ${GREEN}13${NC}) Show ArgoCD status"
+  echo -e "  ${GREEN}14${NC}) Install Image Updater         ${YELLOW}(auto-update Docker images)${NC}"
+  echo -e "  ${GREEN}15${NC}) Full ArgoCD Setup             ${YELLOW}(install → bootstrap → UI)${NC}"
+  echo
+  echo -e "${CYAN}Complete Local Development Setup:${NC}"
+  echo -e "  ${GREEN}17${NC}) Deploy Everything + GitOps    ${YELLOW}(app + ArgoCD + UI - one-click setup)${NC}"
   echo -e "  ${RED}0${NC}) Exit"
   echo
-  read -rp "Enter choice [0-9]: " choice
+  read -rp "Enter choice [0-17]: " choice
 }
 
 #------------------------------------------------------------------------------
@@ -249,6 +261,275 @@ run_describe_pod() {
   kubectl describe pod "$SELECTED_POD" -n ecommerce | less -R
 }
 
+#------------------------------------------------------------------------------
+# ArgoCD Management Functions
+#------------------------------------------------------------------------------
+
+#------------------------------------------------------------------------------
+# run_argocd_install
+# Installs ArgoCD on the minikube cluster
+#------------------------------------------------------------------------------
+run_argocd_install() {
+  echo -e "${GREEN}[INFO] $(date '+%Y-%m-%d %H:%M:%S')${NC} Installing ArgoCD..." && echo
+  if [[ -f "$SCRIPT_DIR/setup-argocd.sh" ]]; then
+    "$SCRIPT_DIR/setup-argocd.sh"
+  else
+    echo -e "${RED}ArgoCD setup script not found!${NC}"
+    sleep 2
+    return
+  fi
+  echo -e "${GREEN}ArgoCD installation completed! ✓${NC}"
+  sleep 2
+}
+
+#------------------------------------------------------------------------------
+# run_argocd_bootstrap
+# Bootstraps the App of Apps pattern for GitOps deployment
+#------------------------------------------------------------------------------
+run_argocd_bootstrap() {
+  echo -e "${GREEN}[INFO] $(date '+%Y-%m-%d %H:%M:%S')${NC} Bootstrapping ArgoCD App of Apps..." && echo
+  
+  # Check if ArgoCD is installed
+  if ! kubectl get namespace argocd &> /dev/null; then
+    echo -e "${RED}ArgoCD is not installed. Please install it first (option 10).${NC}"
+    sleep 3
+    return
+  fi
+  
+  if [[ -f "$SCRIPT_DIR/manage-argocd.sh" ]]; then
+    "$SCRIPT_DIR/manage-argocd.sh" bootstrap
+    echo -e "${GREEN}Bootstrap completed! ✓${NC}"
+    echo -e "${CYAN}Your applications will now be managed by ArgoCD via GitOps!${NC}"
+  else
+    echo -e "${RED}ArgoCD management script not found!${NC}"
+  fi
+  sleep 3
+}
+
+#------------------------------------------------------------------------------
+# run_argocd_ui
+# Opens the ArgoCD UI via port-forwarding
+#------------------------------------------------------------------------------
+run_argocd_ui() {
+  echo -e "${GREEN}[INFO] $(date '+%Y-%m-%d %H:%M:%S')${NC} Starting ArgoCD UI..." && echo
+  
+  # Check if ArgoCD is installed
+  if ! kubectl get namespace argocd &> /dev/null; then
+    echo -e "${RED}ArgoCD is not installed. Please install it first (option 10).${NC}"
+    sleep 3
+    return
+  fi
+  
+  if [[ -f "$SCRIPT_DIR/manage-argocd.sh" ]]; then
+    echo -e "${YELLOW}Press Ctrl+C to stop the ArgoCD UI and return to menu${NC}"
+    echo -e "${CYAN}ArgoCD UI will be available at: http://localhost:8090${NC}"
+    echo
+    
+    # Run ArgoCD UI in the background to allow Ctrl+C handling
+    "$SCRIPT_DIR/manage-argocd.sh" ui &
+    UI_PID=$!
+    
+    # Trap Ctrl+C to cleanly exit
+    trap 'echo; read -rp "⚠️  Stop ArgoCD UI? (y/N): " yn; if [[ $yn =~ ^[Yy]$ ]]; then kill $UI_PID 2>/dev/null; trap - INT; echo -e "${GREEN}[INFO] ArgoCD UI stopped.${NC}"; return; fi' INT
+    
+    wait $UI_PID 2>/dev/null
+    trap - INT
+  else
+    echo -e "${RED}ArgoCD management script not found!${NC}"
+    sleep 2
+  fi
+}
+
+#------------------------------------------------------------------------------
+# run_argocd_status
+# Shows ArgoCD applications and their status
+#------------------------------------------------------------------------------
+run_argocd_status() {
+  echo -e "${GREEN}[INFO] $(date '+%Y-%m-%d %H:%M:%S')${NC} ArgoCD Status:" && echo
+  
+  # Check if ArgoCD is installed
+  if ! kubectl get namespace argocd &> /dev/null; then
+    echo -e "${RED}ArgoCD is not installed. Please install it first (option 10).${NC}"
+    sleep 3
+    return
+  fi
+  
+  if [[ -f "$SCRIPT_DIR/manage-argocd.sh" ]]; then
+    "$SCRIPT_DIR/manage-argocd.sh" status
+  else
+    echo -e "${RED}ArgoCD management script not found!${NC}"
+  fi
+  echo
+  read -p "Press Enter to return to the menu..." _
+}
+
+#------------------------------------------------------------------------------
+# run_argocd_image_updater
+# Installs ArgoCD Image Updater for automatic Docker image updates
+#------------------------------------------------------------------------------
+run_argocd_image_updater() {
+  echo -e "${GREEN}[INFO] $(date '+%Y-%m-%d %H:%M:%S')${NC} Installing ArgoCD Image Updater..." && echo
+  
+  # Check if ArgoCD is installed
+  if ! kubectl get namespace argocd &> /dev/null; then
+    echo -e "${RED}ArgoCD is not installed. Please install it first (option 10).${NC}"
+    sleep 3
+    return
+  fi
+  
+  if [[ -f "$SCRIPT_DIR/manage-argocd.sh" ]]; then
+    "$SCRIPT_DIR/manage-argocd.sh" image-updater
+    echo -e "${GREEN}Image Updater installed! ✓${NC}"
+    echo -e "${CYAN}Now Jenkins builds will automatically trigger GitOps deployments!${NC}"
+  else
+    echo -e "${RED}ArgoCD management script not found!${NC}"
+  fi
+  sleep 3
+}
+
+#------------------------------------------------------------------------------
+# run_argocd_full_setup
+# Convenience wrapper that performs install → bootstrap → UI in one go.
+#------------------------------------------------------------------------------
+run_argocd_full_setup() {
+  echo -e "${GREEN}[INFO] $(date '+%Y-%m-%d %H:%M:%S')${NC} Running full ArgoCD setup (install → bootstrap → UI)" && echo
+
+  # Step 1: Install ArgoCD (if not already present)
+  if ! kubectl get namespace argocd &> /dev/null; then
+    run_argocd_install || return
+  else
+    echo -e "${YELLOW}ArgoCD already installed – skipping install step.${NC}"
+  fi
+
+  # Step 2: Bootstrap applications
+  run_argocd_bootstrap
+
+  # Step 3: Open the UI (blocks until user exits)
+  run_argocd_ui
+}
+
+#------------------------------------------------------------------------------
+# run_complete_setup
+# Ultimate convenience function: deploys app + full ArgoCD GitOps setup + UI
+# Perfect for local development - one command to rule them all!
+#------------------------------------------------------------------------------
+run_complete_setup() {
+  echo -e "${CYAN}╔══════════════════════════════════════════════════════════════════╗${NC}"
+  echo -e "${CYAN}║          🚀 COMPLETE LOCAL DEVELOPMENT SETUP 🚀                ║${NC}"
+  echo -e "${CYAN}║  Deploy App → ArgoCD → Image Updater → GitOps → UI              ║${NC}"
+  echo -e "${CYAN}╚══════════════════════════════════════════════════════════════════╝${NC}"
+  echo
+
+  # Ask if user wants to build Docker image
+  local build_choice
+  read -rp "Build Docker image before deploying? (y/N): " build_choice
+  echo
+
+  echo -e "${GREEN}[STEP 1/6]${NC} Deploying E-commerce Application..."
+  echo -e "${CYAN}=========================================${NC}"
+  if [[ $build_choice =~ ^[Yy]$ ]]; then
+    run_deploy "--build" || { echo -e "${RED}❌ Application deployment failed!${NC}"; return 1; }
+  else
+    run_deploy || { echo -e "${RED}❌ Application deployment failed!${NC}"; return 1; }
+  fi
+  echo -e "${GREEN}✅ Application deployed successfully!${NC}"
+  echo
+
+  echo -e "${GREEN}[STEP 2/6]${NC} Installing ArgoCD..."
+  echo -e "${CYAN}============================${NC}"
+  if ! kubectl get namespace argocd &> /dev/null; then
+    run_argocd_install || { echo -e "${RED}❌ ArgoCD installation failed!${NC}"; return 1; }
+  else
+    echo -e "${YELLOW}✅ ArgoCD already installed – skipping install step.${NC}"
+  fi
+  echo
+
+  echo -e "${GREEN}[STEP 3/6]${NC} Installing ArgoCD Image Updater..."
+  echo -e "${CYAN}========================================${NC}"
+  # Check if Image Updater is already installed
+  if kubectl get deployment argocd-image-updater -n argocd &> /dev/null; then
+    echo -e "${YELLOW}✅ ArgoCD Image Updater already installed – skipping.${NC}"
+  else
+    run_argocd_image_updater || { echo -e "${RED}❌ Image Updater installation failed!${NC}"; return 1; }
+  fi
+  echo
+
+  echo -e "${GREEN}[STEP 4/6]${NC} Bootstrapping ArgoCD Applications..."
+  echo -e "${CYAN}===========================================${NC}"
+  run_argocd_bootstrap || { echo -e "${RED}❌ Bootstrap failed!${NC}"; return 1; }
+  echo
+
+  echo -e "${GREEN}[STEP 5/6]${NC} Checking GitOps Status..."
+  echo -e "${CYAN}================================${NC}"
+  sleep 3  # Give ArgoCD a moment to sync
+  run_argocd_status
+  echo
+
+  echo -e "${GREEN}[STEP 6/6]${NC} Opening ArgoCD UI..."
+  echo -e "${CYAN}============================${NC}"
+  echo -e "${GREEN}🎉 COMPLETE SETUP FINISHED! 🎉${NC}"
+  echo
+  echo -e "${CYAN}Your local development environment is ready:${NC}"
+  echo -e "  ✅ E-commerce application deployed"
+  echo -e "  ✅ ArgoCD GitOps engine installed"
+  echo -e "  ✅ Automatic image updates configured"
+  echo -e "  ✅ Applications bootstrapped via GitOps"
+  echo
+  echo -e "${YELLOW}Next steps:${NC}"
+  echo -e "  • ArgoCD UI: http://localhost:8090"
+  echo -e "  • Application: Use option 6 to expose the app"
+  echo -e "  • Jenkins CI/CD will now automatically deploy via GitOps!"
+  echo
+  echo -e "${YELLOW}Press any key to open ArgoCD UI (Ctrl+C to skip)...${NC}"
+  read -n 1 -s -r
+
+  # Open ArgoCD UI (user can Ctrl+C to exit)
+  run_argocd_ui
+}
+
+#------------------------------------------------------------------------------
+# run_open_monitoring
+# Expose Prometheus service from monitoring namespace via minikube.
+# Logic mirrors run_open_app but targets service 'prometheus' in 'monitoring'.
+#------------------------------------------------------------------------------
+run_open_monitoring() {
+  # Ensure minikube is running
+  if ! minikube status --format '{{.Host}}' 2>/dev/null | grep -q "Running"; then
+    echo -e "${RED}Minikube is not running. Start it with the deploy option first.${NC}"; sleep 2; return
+  fi
+
+  # Verify service exists
+  if ! kubectl get svc prometheus -n monitoring &>/dev/null; then
+    echo -e "${RED}Prometheus service not found in namespace 'monitoring'. Deploy first.${NC}"; sleep 2; return
+  fi
+
+  local url
+  url=$(minikube service prometheus -n monitoring --url 2>/dev/null | head -n 1)
+
+  if [[ -n "$url" ]] && curl -sfI "$url" >/dev/null; then
+    echo -e "${GREEN}✅ Prometheus already accessible at:${NC} $url"
+    echo -e "${YELLOW}Press Ctrl+C to stop the tunnel and return to the menu${NC}"
+    while true; do sleep 3600; done & WAIT_PID=$!
+    trap 'echo; read -rp "⚠️  Stop exposing the service? (y/N): " yn; if [[ $yn =~ ^[Yy]$ ]]; then kill $WAIT_PID 2>/dev/null; trap - INT; echo -e "${GREEN}[INFO] Service tunnel closed.${NC}"; return; fi' INT
+    wait $WAIT_PID
+    trap - INT
+    return
+  fi
+
+  echo -e "${GREEN}[INFO] $(date '+%Y-%m-%d %H:%M:%S')${NC} Opening Prometheus service (press Ctrl+C to stop)" && echo
+  minikube service prometheus -n monitoring &
+  SVC_PID=$!
+  sleep 2
+  url=$(minikube service prometheus -n monitoring --url 2>/dev/null | head -n 1)
+  if [[ -n "$url" ]]; then
+    echo -e "${GREEN}✅ Prometheus exposed at:${NC} $url"
+  fi
+
+  trap 'echo; read -rp "⚠️  Stop exposing the service? (y/N): " yn; if [[ $yn =~ ^[Yy]$ ]]; then kill $SVC_PID 2>/dev/null; trap - INT; echo -e "${GREEN}[INFO] Service tunnel closed.${NC}"; return; fi' INT
+  wait $SVC_PID 2>/dev/null
+  trap - INT
+}
+
 # Main loop (allows multiple operations in one session)
 while true; do
   clear
@@ -282,6 +563,30 @@ while true; do
       ;;
     9)
       run_describe_pod
+      ;;
+    10)
+      run_argocd_install
+      ;;
+    11)
+      run_argocd_bootstrap
+      ;;
+    12)
+      run_argocd_ui
+      ;;
+    13)
+      run_argocd_status
+      ;;
+    14)
+      run_argocd_image_updater
+      ;;
+    15)
+      run_argocd_full_setup
+      ;;
+    16)
+      run_open_monitoring
+      ;;
+    17)
+      run_complete_setup
       ;;
     0)
       echo -e "${YELLOW}Goodbye!${NC}"

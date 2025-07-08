@@ -48,7 +48,7 @@ spec:
               echo "PostgreSQL is ready!"
       containers:
         - name: nextjs
-          image: danors/ecommerce-dashboard:latest
+          image: danors/ecommerce-dashboard:latest # argocd-image-updater will update this
           ports:
             - containerPort: 3000
           env:

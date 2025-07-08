@@ -1,0 +1,144 @@
+# ==============================================================================
+# 🏪 ArgoCD Application: ecommerce-app (Enhanced for Local Development)
+# ==============================================================================
+#
+# PURPOSE:
+#   Deploys the complete e-commerce stack (Next.js frontend + PostgreSQL database)
+#   from k8s/manifests into the `ecommerce` namespace using GitOps methodology.
+#
+# LOCAL DEVELOPMENT FEATURES:
+#   ✅ Automatic image updates via ArgoCD Image Updater
+#   ✅ Health checks for reliable deployments
+#   ✅ Resource limits suitable for local development
+#   ✅ Automatic namespace creation
+#   ✅ Self-healing and pruning for clean state
+#
+# WORKFLOW:
+#   1. Jenkins builds → Docker Hub (danors/ecommerce-dashboard:${BUILD_NUMBER})
+#   2. ArgoCD Image Updater detects new image → Updates Git repository
+#   3. ArgoCD syncs changes → Redeploys to Kubernetes
+#   4. Health checks ensure successful deployment
+#
+# MONITORING:
+#   - ArgoCD UI: http://localhost:8090 (when port-forwarded)
+#   - Application URL: http://localhost (via ingress)
+#   - Health endpoint: http://localhost/api/health
+# ==============================================================================
+
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: ecommerce-app
+  namespace: argocd
+  finalizers:
+    # Ensures proper cleanup when application is deleted
+    - resources-finalizer.argocd.argoproj.io
+  labels:
+    # Standard Kubernetes labels for better organization
+    app.kubernetes.io/name: ecommerce-app
+    app.kubernetes.io/part-of: ecommerce-platform
+    app.kubernetes.io/component: backend
+    app.kubernetes.io/version: "1.0.0"
+    app.kubernetes.io/managed-by: argocd
+    # Local development specific labels
+    environment: local
+    deployment-type: development
+  annotations:
+    # ==================================================================
+    # 🔄 ArgoCD Image Updater Configuration (Automatic CI/CD)
+    # ==================================================================
+    # Monitors Docker Hub for new images and auto-updates deployments
+    argocd-image-updater.argoproj.io/image-list: ecommerce=danors/ecommerce-dashboard
+    argocd-image-updater.argoproj.io/update-strategy: latest
+    argocd-image-updater.argoproj.io/write-back-method: git
+    argocd-image-updater.argoproj.io/git-branch: main
+    # Check for updates every 2 minutes (good for local development)
+    argocd-image-updater.argoproj.io/poll-interval: 2m
+    # Local development: Use less strict update policy
+    argocd-image-updater.argoproj.io/allow-tags: regexp:^[0-9]+$|^latest$
+
+    # ==================================================================
+    # 📝 Documentation Links (Local Development Resources)
+    # ==================================================================
+    documentation: "README.md"
+    repository: "https://github.com/Danor93/ecommerce-cicd-pipeline"
+    ci-cd-docs: "k8s/argocd/README-CI-CD-INTEGRATION.md"
+    local-setup: "INSTALL.md"
+
+spec:
+  # Reference to the ArgoCD project that defines permissions and policies
+  project: ecommerce-project
+
+  # ==================================================================
+  # 📂 Source Configuration (Git Repository)
+  # ==================================================================
+  source:
+    # Main repository containing all manifests
+    repoURL: https://github.com/Danor93/ecommerce-cicd-pipeline.git
+    targetRevision: main # Track main branch for production-ready code
+    path: k8s/manifests # Path containing Kubernetes manifests
+
+    # Optional: Directory-specific configuration
+    directory:
+      recurse: true # Include subdirectories if any
+
+  # ==================================================================
+  # 🎯 Destination Configuration (Where to Deploy)
+  # ==================================================================
+  destination:
+    # Deploy to local Kubernetes cluster
+    server: https://kubernetes.default.svc
+    namespace: ecommerce # Dedicated namespace for e-commerce components
+
+  # ==================================================================
+  # �� Sync Policy (Automated GitOps Behavior)
+  # ==================================================================
+  syncPolicy:
+    # Automated sync for immediate updates (great for local development)
+    automated:
+      prune: true # Remove resources not in Git (keep cluster clean)
+      selfHeal: true # Fix any manual changes (enforce GitOps)
+      allowEmpty: false # Don't sync if no resources found (safety check)
+
+    # Sync options for better local development experience
+    syncOptions:
+      - CreateNamespace=true # Auto-create namespace if missing
+      - PrunePropagationPolicy=foreground # Wait for deletion before sync
+      - PruneLast=true # Delete old resources after new ones are ready
+      - Validate=false # Skip validation for faster local development
+      - ApplyOutOfSyncOnly=true # Only sync resources that changed
+
+    # Retry policy for flaky local environments
+    retry:
+      limit: 5 # Try up to 5 times
+      backoff:
+        duration: 5s # Start with 5 second delay
+        factor: 2 # Double delay each retry (5s, 10s, 20s, 40s, 80s)
+        maxDuration: 3m # Maximum 3 minutes between retries
+
+  # ==================================================================
+  # 📊 Application Configuration
+  # ==================================================================
+  # Keep last 10 revisions for easy rollbacks during development
+  revisionHistoryLimit: 10
+
+  # ==================================================================
+  # 🩺 Health Check & Diff Ignore Configuration
+  # ==================================================================
+  # Ignore replica differences for better local development
+  # (ArgoCD won't show as out-of-sync if replicas are manually scaled)
+  ignoreDifferences:
+    - group: apps
+      kind: Deployment
+      jsonPointers:
+        - /spec/replicas # Ignore replica count differences
+        - /spec/template/spec/containers/*/image # Let Image Updater handle images
+    # Ignore resource differences that often change in local development
+    - group: ""
+      kind: Service
+      jsonPointers:
+        - /spec/clusterIP # Ignore auto-assigned cluster IPs
+    - group: networking.k8s.io
+      kind: Ingress
+      jsonPointers:
+        - /status/loadBalancer # Ignore local ingress status

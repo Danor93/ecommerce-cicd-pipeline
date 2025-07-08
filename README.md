@@ -1,35 +1,42 @@
 # E-Commerce Admin Dashboard
 
-> **Quick Kubernetes Setup:**
->
-> ```bash
-> # one-liner to deploy, inspect, or tear-down everything via interactive menu
-> cd k8s && ./menu.sh
-> ```
->
-> The menu will guide you through deployment, live status checks, and cleanup in a few keystrokes.
-
-A modern, containerized e-commerce admin dashboard built with Next.js, PostgreSQL, and Docker. This project provides a complete product management system with user authentication, all running in a consistent and reproducible development environment.
+A modern, containerized e-commerce admin dashboard built with Next.js, PostgreSQL, and Docker. Features complete CI/CD automation with Jenkins and GitOps deployment with ArgoCD. This project provides a complete product management system with user authentication, all running in a consistent and reproducible development environment.
 
 ## 🚀 Features
 
-- **Containerized Environment** - Develop and run the application consistently with Docker and Docker Compose.
+### Application Features
+
 - **User Authentication** - Secure login and signup system with role-based access
 - **Product Management** - Full CRUD operations (Create, Read, Update, Delete)
 - **E-commerce Storefront** - A customer-facing store to browse and purchase products
 - **Shopping Cart** - Fully functional cart for users to add items to
 - **Dashboard Analytics** - Real-time stats and inventory tracking
 - **Responsive Design** - Modern UI built with shadcn/ui components
-- **PostgreSQL Database** - Robust, production-ready database with automated initialization.
-- **Robust Form Validation** - Comprehensive client-side validation with password strength policies
+
+### DevOps & Infrastructure
+
+- **GitOps Deployment** - Automated deployments with ArgoCD
+- **CI/CD Pipeline** - Jenkins automatically builds and deploys on code changes
+- **Containerized Environment** - Docker and Kubernetes for consistent deployments
+- **Auto-Image Updates** - New Docker images automatically trigger redeployments
+- **One-Click Setup** - Complete local development environment in minutes
 
 ## 🛠️ Tech Stack
+
+### Application
 
 - **Frontend**: Next.js 15, React, TypeScript, Tailwind CSS
 - **UI Components**: shadcn/ui
 - **Database**: PostgreSQL
 - **Authentication**: bcryptjs for password hashing
+
+### DevOps & Infrastructure
+
 - **Containerization**: Docker, Docker Compose
+- **Orchestration**: Kubernetes
+- **GitOps**: ArgoCD with Image Updater
+- **CI/CD**: Jenkins Pipeline
+- **Monitoring**: Prometheus (optional)
 
 ## 🚀 Quick Start
 
@@ -44,20 +51,41 @@ The INSTALL.md guide covers:
 - ✅ Database configuration
 - ✅ Troubleshooting and security considerations
 
-### Quick Launch (TL;DR)
+### Quick Launch
 
-    ```bash
-
+```bash
 git clone https://github.com/Danor93/ecommerce-cicd-pipeline.git
 cd ecommerce-cicd-pipeline
+
+# Option 1: Complete GitOps Setup (Recommended)
+cd k8s && ./menu.sh
+# Choose option 17: Deploy Everything + GitOps
+
+# Option 2: Docker Compose (Traditional)
 cp .env.example .env
 docker-compose up --build -d
+```
 
-````
+**Access Points:**
 
 - **Application**: [http://localhost:3000](http://localhost:3000)
-- **Jenkins**: [http://localhost:8080](http://localhost:8080)
+- **ArgoCD UI**: [http://localhost:8090](http://localhost:8090) (GitOps)
+- **Jenkins**: [http://localhost:8080](http://localhost:8080) (CI/CD)
 - **Login**: admin@example.com / admin123
+
+## 🔄 GitOps Workflow
+
+Once set up with ArgoCD, your development workflow becomes:
+
+1. **Code & Commit** - Make changes and push to Git
+2. **Jenkins Builds** - Automatically builds and pushes Docker image
+3. **ArgoCD Deploys** - Detects new image and updates Kubernetes
+4. **Monitor** - Watch deployments in ArgoCD UI
+
+```bash
+# Check GitOps status anytime:
+cd k8s && ./menu.sh  # Option 13: Show ArgoCD status
+```
 
 ## 📱 Using the Admin Panel
 
@@ -114,11 +142,15 @@ The application provides RESTful API endpoints:
 ```text
 .
 ├── k8s/                         # Kubernetes resources & helper scripts
+│   ├── argocd/                  # GitOps configurations
+│   │   ├── applications/        # ArgoCD app definitions
+│   │   ├── bootstrap/           # App-of-apps pattern
+│   │   └── projects/            # ArgoCD projects & permissions
 │   ├── manifests/               # YAML manifests (namespace, deployments, PV, etc.)
 │   ├── deploy.sh                # Automates deployment to Minikube
 │   ├── status.sh                # Shows detailed status overview
 │   ├── cleanup.sh               # Cleans up namespace / cluster resources
-│   └── menu.sh                  # Interactive menu (deploy · status · cleanup)
+│   └── menu.sh                  # Interactive menu (deploy · GitOps · status · cleanup)
 ├── src/                         # Next.js application source
 │   ├── app/                     # API routes & pages
 │   ├── components/              # Reusable UI components
@@ -129,7 +161,7 @@ The application provides RESTful API endpoints:
 ├── Dockerfile                   # Docker build for Next.js app
 ├── docker-compose.yml           # Local Docker development stack
 └── README.md                    # This file
-````
+```
 
 ## 🔧 Development
 
